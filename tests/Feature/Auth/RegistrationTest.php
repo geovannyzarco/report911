@@ -6,8 +6,8 @@ use Livewire\Volt\Volt;
 test('registration screen can be rendered', function () {
     $response = $this->get('/register');
 
-    $response->assertStatus(200);
-});
+    $response->assertNotFound();
+})->skip('Registration is disabled');
 
 test('new users can register', function () {
     $response = Volt::test('auth.register')
@@ -25,7 +25,7 @@ test('new users can register', function () {
     $this->assertAuthenticated();
 
     expect(User::where('oni', '1234567890')->exists())->toBeTrue();
-});
+})->skip('Registration is disabled');
 
 test('registration fails with a duplicated oni', function () {
     User::factory()->create(['oni' => '1234567890']);
@@ -41,4 +41,4 @@ test('registration fails with a duplicated oni', function () {
     $response->assertHasErrors(['oni']);
 
     $this->assertGuest();
-});
+})->skip('Registration is disabled');

@@ -84,23 +84,15 @@ new #[Layout('components.layouts.auth')] class extends Component
         <flux:input wire:model="oni" label="{{ __('ONI') }}" type="text" name="oni" required autofocus autocomplete="username" placeholder="ONI" />
 
         <!-- Password -->
-        <div class="relative">
-            <flux:input
-                wire:model="password"
-                label="{{ __('Password') }}"
-                type="password"
-                name="password"
-                required
-                autocomplete="current-password"
-                placeholder="Password"
-            />
-
-            @if (Route::has('password.request'))
-                <x-text-link class="absolute right-0 top-0" href="{{ route('password.request') }}">
-                    {{ __('Forgot your password?') }}
-                </x-text-link>
-            @endif
-        </div>
+        <flux:input
+            wire:model="password"
+            label="{{ __('Password') }}"
+            type="password"
+            name="password"
+            required
+            autocomplete="current-password"
+            placeholder="Password"
+        />
 
         <!-- Remember Me -->
         <flux:checkbox wire:model="remember" label="{{ __('Remember me') }}" />
@@ -109,9 +101,4 @@ new #[Layout('components.layouts.auth')] class extends Component
             <flux:button variant="primary" type="submit" class="w-full">{{ __('Log in') }}</flux:button>
         </div>
     </form>
-
-    <div class="space-x-1 text-center text-sm text-zinc-600 dark:text-zinc-400">
-        Don't have an account?
-        <x-text-link href="{{ route('register') }}">Sign up</x-text-link>
-    </div>
 </div>

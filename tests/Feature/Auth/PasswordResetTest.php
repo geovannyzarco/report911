@@ -8,8 +8,8 @@ use Livewire\Volt\Volt;
 test('reset password link screen can be rendered', function () {
     $response = $this->get('/forgot-password');
 
-    $response->assertStatus(200);
-});
+    $response->assertNotFound();
+})->skip('Password reset is disabled');
 
 test('reset password link can be requested', function () {
     Notification::fake();
@@ -21,7 +21,7 @@ test('reset password link can be requested', function () {
         ->call('sendPasswordResetLink');
 
     Notification::assertSentTo($user, ResetPassword::class);
-});
+})->skip('Password reset is disabled');
 
 test('reset password screen can be rendered', function () {
     Notification::fake();
@@ -39,7 +39,7 @@ test('reset password screen can be rendered', function () {
 
         return true;
     });
-});
+})->skip('Password reset is disabled');
 
 test('password can be reset with valid token', function () {
     Notification::fake();
@@ -63,4 +63,4 @@ test('password can be reset with valid token', function () {
 
         return true;
     });
-});
+})->skip('Password reset is disabled');
