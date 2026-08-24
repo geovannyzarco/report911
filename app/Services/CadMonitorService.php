@@ -9,14 +9,19 @@ use Illuminate\Support\Facades\DB;
 /**
  * Servicio de monitoreo en vivo para la base de datos CAD ViperCAD_Log.
  * Consultas de estado actual optimizadas para tiempo real.
+ *
+ * Todas las queries usan YYYYMMDD para evitar problemas de idioma en SQL Server.
  */
 class CadMonitorService
 {
     /**
-     * Obtiene los incidentes activos (no cerrados ni finalizados).
+     * Incidentes con actividad reciente (ultimas 24 horas).
+     * Excluye Terminado(6), Cerrado(7) y Req_Despacho(8) que es una cola de solicitudes.
      */
     public function getEventosActivos(): Collection
     {
+        $desde = Carbon::now()->subDay()->format('Ymd');
+
         return DB::connection('sqlsrv_cad')->table('Incidents as i')
             ->select([
                 'i.OID',
@@ -33,16 +38,18 @@ class CadMonitorService
             ->leftJoin('Statuses as st', 'i.Status', '=', 'st.OID')
             ->leftJoin('Agencies as ag', 'i.PrimaryAgency', '=', 'ag.OID')
             ->leftJoin('Agents as a', 'i.Agent', '=', 'a.OID')
-            ->whereNotIn('i.Status', [6, 7]) // No Terminado, No Cerrado
+            ->whereNotIn('i.Status', [6, 7, 8]) // Excluir Terminado, Cerrado, Req_Despacho
             ->where(function ($q) {
                 $q->where('i.Deleted', 0)->orWhereNull('i.Deleted');
             })
+            ->whereRaw("i.CreationTime >= '$desde'")
             ->orderByDesc('i.CreationTime')
+            ->limit(200)
             ->get();
     }
 
     /**
-     * Obtiene las unidades/recursos actualmente asignadas a incidentes activos.
+     * Unidades/recursos actualmente asignados a incidentes activos.
      */
     public function getRecursosEnCampo(): Collection
     {
@@ -50,7 +57,7 @@ class CadMonitorService
             ->select([
                 'res.OID',
                 'res.Name as CodigoUnidad',
-                'st.Nombre as EstadoUnidad',
+                'st.Name as EstadoUnidad',
                 'sta.Name as Estacion',
                 'i.SequenceNumber as Incidente',
                 'rt.Name as TipoRespuesta',
@@ -67,11 +74,11 @@ class CadMonitorService
     }
 
     /**
-     * Obtiene los últimos eventos de los últimos N minutos.
+     * Ultimos cambios de estado de los ultimos N minutos.
      */
     public function getUltimosEventosRecientes(int $minutos = 30): Collection
     {
-        $desde = Carbon::now()->subMinutes($minutos);
+        $desdeStr = Carbon::now()->subMinutes($minutos)->format('Ymd');
 
         return DB::connection('sqlsrv_cad')->table('VMIS_RESP_STATUSCHANGES as sc')
             ->select([
@@ -87,7 +94,7 @@ class CadMonitorService
             ->leftJoin('Incidents as i', 'r.Incident', '=', 'i.OID')
             ->leftJoin('Statuses as st', 'sc.STATUS', '=', 'st.OID')
             ->leftJoin('Statuses as st2', 'sc.NEXTSTATUS', '=', 'st2.OID')
-            ->where('sc.STATUSTIME', '>=', $desde)
+            ->whereRaw("sc.STATUSTIME >= '$desdeStr'")
             ->orderByDesc('sc.STATUSTIME')
             ->limit(100)
             ->get();

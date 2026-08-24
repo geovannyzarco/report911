@@ -9,14 +9,25 @@ use Illuminate\Support\Facades\DB;
 /**
  * Servicio de reportes para la base de datos CAD ViperCAD_Log.
  * Encapsula todas las queries optimizadas de SQL Server.
+ *
+ * NOTA: Las fechas se insertan como literales SQL porque el driver PDO
+ * de SQL Server no bindea correctamente los parametros datetime con
+ * configuracion de idioma en espanol. Carbon provee input seguro.
  */
 class CadReportService
 {
     private const OVERFLOW_VALUE = 2147483647;
 
     /**
+     * Formato YYYYMMDD para SQL Server (aceptado independientemente del idioma).
+     */
+    private function sqlDate(Carbon $date): string
+    {
+        return $date->format('Ymd');
+    }
+
+    /**
      * Reporte de tiempos de respuesta promedio por agencia, prioridad y tipo de incidente.
-     * Calcula tiempos de despacho, en ruta, tránsito y en escena.
      */
     public function getTiemposRespuestaPromedio(
         Carbon $desde,
@@ -24,6 +35,9 @@ class CadReportService
         ?string $agencia = null,
         ?string $prioridad = null,
     ): Collection {
+        $desdeStr = $this->sqlDate($desde);
+        $hastaStr = $this->sqlDate($hasta);
+
         $query = DB::connection('sqlsrv_cad')->table('VMIS_RESP_STATUSCHANGES as sc')
             ->select([
                 'ag.Name as Agencia',
@@ -39,8 +53,8 @@ class CadReportService
             ->leftJoin('Agencies as ag', 'r.Agency', '=', 'ag.OID')
             ->leftJoin('Priorities as pr', 'r.Priority', '=', 'pr.OID')
             ->leftJoin('ResponseTypes as rt', 'r.ResponseType', '=', 'rt.OID')
-            ->where('sc.STATUSTIME', '>=', $desde)
-            ->where('sc.STATUSTIME', '<=', $hasta)
+            ->whereRaw("sc.STATUSTIME >= '$desdeStr'")
+            ->whereRaw("sc.STATUSTIME <= '$hastaStr'")
             ->groupBy('ag.Name', 'pr.Name', 'rt.Name');
 
         if ($agencia) {
@@ -57,12 +71,15 @@ class CadReportService
     }
 
     /**
-     * Reporte de volumen de incidentes por clasificación y prioridad.
+     * Reporte de volumen de incidentes por clasificacion y prioridad.
      */
     public function getVolumenIncidentes(
         Carbon $desde,
         Carbon $hasta,
     ): Collection {
+        $desdeStr = $this->sqlDate($desde);
+        $hastaStr = $this->sqlDate($hasta);
+
         return DB::connection('sqlsrv_cad')->table('Incidents as i')
             ->select([
                 DB::raw('CAST(i.CreationTime AS DATE) as Fecha'),
@@ -74,8 +91,8 @@ class CadReportService
             ])
             ->leftJoin('Classifications as cl', 'i.Classification', '=', 'cl.OID')
             ->leftJoin('Priorities as pr', 'i.Priority', '=', 'pr.OID')
-            ->where('i.CreationTime', '>=', $desde)
-            ->where('i.CreationTime', '<=', $hasta)
+            ->whereRaw("i.CreationTime >= '$desdeStr'")
+            ->whereRaw("i.CreationTime <= '$hastaStr'")
             ->where(function ($q) {
                 $q->where('i.Deleted', 0)
                     ->orWhereNull('i.Deleted');
@@ -87,13 +104,15 @@ class CadReportService
     }
 
     /**
-     * Reporte de utilización y eficiencia de unidades (recursos).
-     * Mide despachos totales y horas de servicio activo por unidad.
+     * Reporte de utilizacion y eficiencia de unidades (recursos).
      */
     public function getUtilizacionUnidades(
         Carbon $desde,
         Carbon $hasta,
     ): Collection {
+        $desdeStr = $this->sqlDate($desde);
+        $hastaStr = $this->sqlDate($hasta);
+
         return DB::connection('sqlsrv_cad')->table('VMIS_RESP_RESOACTIVETIMES as rat')
             ->select([
                 'res.Name as CodigoUnidad',
@@ -104,20 +123,23 @@ class CadReportService
             ])
             ->join('Resources as res', 'rat.RESOURCE', '=', 'res.OID')
             ->leftJoin('Stations as sta', 'res.Station', '=', 'sta.OID')
-            ->where('rat.UTCTIME_START', '>=', $desde)
-            ->where('rat.UTCTIME_START', '<=', $hasta)
+            ->whereRaw("rat.UTCTIME_START >= '$desdeStr'")
+            ->whereRaw("rat.UTCTIME_START <= '$hastaStr'")
             ->groupBy('res.Name', 'sta.Name')
             ->orderByDesc('HorasServicioActivo')
             ->get();
     }
 
     /**
-     * Reporte de códigos de cierre / disposiciones de emergencias.
+     * Reporte de codigos de cierre / disposiciones de emergencias.
      */
     public function getDisposicionesCierre(
         Carbon $desde,
         Carbon $hasta,
     ): Collection {
+        $desdeStr = $this->sqlDate($desde);
+        $hastaStr = $this->sqlDate($hasta);
+
         return DB::connection('sqlsrv_cad')->table('Responses as r')
             ->select([
                 'ag.Name as Agencia',
@@ -135,8 +157,8 @@ class CadReportService
                     });
             })
             ->join('DispositionCodes as dc', 'frd.DispositionCode', '=', 'dc.OID')
-            ->where('r.CreationTime', '>=', $desde)
-            ->where('r.CreationTime', '<=', $hasta)
+            ->whereRaw("r.CreationTime >= '$desdeStr'")
+            ->whereRaw("r.CreationTime <= '$hastaStr'")
             ->groupBy('ag.Name', 'rt.Name', 'dc.Name')
             ->orderBy('Agencia')
             ->orderByDesc('Cantidad')
@@ -144,12 +166,15 @@ class CadReportService
     }
 
     /**
-     * Reporte de desempeño y carga de trabajo de telefonistas/operadores.
+     * Reporte de desempeno y carga de trabajo de telefonistas/operadores.
      */
     public function getDesempenoOperadores(
         Carbon $desde,
         Carbon $hasta,
     ): Collection {
+        $desdeStr = $this->sqlDate($desde);
+        $hastaStr = $this->sqlDate($hasta);
+
         return DB::connection('sqlsrv_cad')->table('Calls as c')
             ->select([
                 DB::raw('COALESCE(a.DisplayName, a.LogonName) as NombreOperador'),
@@ -160,8 +185,8 @@ class CadReportService
                 DB::raw('SUM(CASE WHEN c.Origin = 2 THEN 1 ELSE 0 END) as Creadas_CAD_Manual'),
             ])
             ->join('Agents as a', 'c.Agent', '=', 'a.OID')
-            ->where('c.CreationTime', '>=', $desde)
-            ->where('c.CreationTime', '<=', $hasta)
+            ->whereRaw("c.CreationTime >= '$desdeStr'")
+            ->whereRaw("c.CreationTime <= '$hastaStr'")
             ->where(function ($q) {
                 $q->where('c.Deleted', 0)
                     ->orWhereNull('c.Deleted');
@@ -172,31 +197,34 @@ class CadReportService
     }
 
     /**
-     * Resumen estadístico general: total de eventos, promedios, etc.
+     * Resumen estadistico general: total de eventos, promedios, etc.
      */
     public function getResumenEstadistico(
         Carbon $desde,
         Carbon $hasta,
     ): array {
+        $desdeStr = $this->sqlDate($desde);
+        $hastaStr = $this->sqlDate($hasta);
+
         $totalIncidentes = DB::connection('sqlsrv_cad')->table('Incidents')
-            ->where('CreationTime', '>=', $desde)
-            ->where('CreationTime', '<=', $hasta)
+            ->whereRaw("CreationTime >= '$desdeStr'")
+            ->whereRaw("CreationTime <= '$hastaStr'")
             ->where(function ($q) {
                 $q->where('Deleted', 0)->orWhereNull('Deleted');
             })
             ->count();
 
         $totalLlamadas = DB::connection('sqlsrv_cad')->table('Calls')
-            ->where('CreationTime', '>=', $desde)
-            ->where('CreationTime', '<=', $hasta)
+            ->whereRaw("CreationTime >= '$desdeStr'")
+            ->whereRaw("CreationTime <= '$hastaStr'")
             ->where(function ($q) {
                 $q->where('Deleted', 0)->orWhereNull('Deleted');
             })
             ->count();
 
         $totalDespachos = DB::connection('sqlsrv_cad')->table('Responses')
-            ->where('CreationTime', '>=', $desde)
-            ->where('CreationTime', '<=', $hasta)
+            ->whereRaw("CreationTime >= '$desdeStr'")
+            ->whereRaw("CreationTime <= '$hastaStr'")
             ->count();
 
         return [
