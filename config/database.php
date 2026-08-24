@@ -112,6 +112,18 @@ return [
             // 'trust_server_certificate' => env('DB_TRUST_SERVER_CERTIFICATE', 'false'),
         ],
 
+        'sqlsrv_cad' => [
+            'driver' => 'sqlsrv',
+            'host' => env('CAD_DB_HOST', '192.168.1.122'),
+            'port' => env('CAD_DB_PORT', '1433'),
+            'database' => env('CAD_DB_DATABASE', 'ViperCAD_Log'),
+            'username' => env('CAD_DB_USERNAME', 'cescobar'),
+            'password' => env('CAD_DB_PASSWORD', ''),
+            'charset' => 'utf8',
+            'prefix' => '',
+            'prefix_indexes' => true,
+        ],
+
     ],
 
     /*
