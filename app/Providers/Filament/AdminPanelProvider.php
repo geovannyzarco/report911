@@ -4,7 +4,6 @@ namespace App\Providers\Filament;
 
 use App\Filament\Pages\Auth\Login;
 use App\Filament\Widgets\ActiveEventsWidget;
-use App\Filament\Widgets\FieldResourcesWidget;
 use App\Filament\Widgets\IncidentAlertsWidget;
 use App\Filament\Widgets\StatsOverview;
 use Filament\Http\Middleware\Authenticate;
@@ -44,7 +43,6 @@ class AdminPanelProvider extends PanelProvider
                 StatsOverview::class,
                 IncidentAlertsWidget::class,
                 ActiveEventsWidget::class,
-                FieldResourcesWidget::class,
             ])
             ->middleware([
                 EncryptCookies::class,
