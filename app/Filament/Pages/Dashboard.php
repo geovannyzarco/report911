@@ -14,15 +14,16 @@ use Filament\Pages\Dashboard as BaseDashboard;
 class Dashboard extends BaseDashboard
 {
     /**
-     * Retorna los widgets que se muestran en el dashboard.
-     * El orden del array define el orden de visualizacion.
+     * Retorna los widgets que se muestran en el dashboard, en el orden especificado.
+     *
+     * @return array<int, string>
      */
     public function getWidgets(): array
     {
         return [
-            StatsOverview::class,            // 1. Resumen del dia (incidentes, llamadas, despachos)
-            IncidentAlertsWidget::class,     // 2. Incidentes abiertos (sin despacho, sin cerrar, sin recursos)
-            ActiveEventsWidget::class,       // 3. Tabla de incidentes activos ultimas 24h
+            StatsOverview::class,
+            IncidentAlertsWidget::class,
+            ActiveEventsWidget::class,
         ];
     }
 }
