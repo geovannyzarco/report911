@@ -198,6 +198,7 @@ class CadReportService
 
     /**
      * Resumen estadistico general: total de eventos, promedios, etc.
+     * Optimizado: ejecuta los 3 COUNTs en una sola query via UNION ALL.
      */
     public function getResumenEstadistico(
         Carbon $desde,
@@ -206,31 +207,27 @@ class CadReportService
         $desdeStr = $this->sqlDate($desde);
         $hastaStr = $this->sqlDate($hasta->copy()->addDay());
 
-        $totalIncidentes = DB::connection('sqlsrv_cad')->table('Incidents')
-            ->whereRaw("CreationTime >= '$desdeStr'")
-            ->whereRaw("CreationTime <= '$hastaStr'")
-            ->where(function ($q) {
-                $q->where('Deleted', 0)->orWhereNull('Deleted');
-            })
-            ->count();
+        // Una sola query que cuenta los 3 totales via UNION ALL
+        // Mucho mas rapido que 3 queries separadas
+        $resultados = DB::connection('sqlsrv_cad')->select("
+            SELECT 'incidentes' as tipo, COUNT(*) as total FROM Incidents
+            WHERE CreationTime >= '$desdeStr' AND CreationTime <= '$hastaStr'
+            AND (Deleted = 0 OR Deleted IS NULL)
+            UNION ALL
+            SELECT 'llamadas', COUNT(*) FROM Calls
+            WHERE CreationTime >= '$desdeStr' AND CreationTime <= '$hastaStr'
+            AND (Deleted = 0 OR Deleted IS NULL)
+            UNION ALL
+            SELECT 'despachos', COUNT(*) FROM Responses
+            WHERE CreationTime >= '$desdeStr' AND CreationTime <= '$hastaStr'
+        ");
 
-        $totalLlamadas = DB::connection('sqlsrv_cad')->table('Calls')
-            ->whereRaw("CreationTime >= '$desdeStr'")
-            ->whereRaw("CreationTime <= '$hastaStr'")
-            ->where(function ($q) {
-                $q->where('Deleted', 0)->orWhereNull('Deleted');
-            })
-            ->count();
-
-        $totalDespachos = DB::connection('sqlsrv_cad')->table('Responses')
-            ->whereRaw("CreationTime >= '$desdeStr'")
-            ->whereRaw("CreationTime <= '$hastaStr'")
-            ->count();
+        $map = collect($resultados)->pluck('total', 'tipo')->toArray();
 
         return [
-            'total_incidentes' => $totalIncidentes,
-            'total_llamadas' => $totalLlamadas,
-            'total_despachos' => $totalDespachos,
+            'total_incidentes' => (int) ($map['incidentes'] ?? 0),
+            'total_llamadas' => (int) ($map['llamadas'] ?? 0),
+            'total_despachos' => (int) ($map['despachos'] ?? 0),
         ];
     }
 
