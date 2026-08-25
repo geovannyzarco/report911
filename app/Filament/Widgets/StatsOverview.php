@@ -23,6 +23,10 @@ class StatsOverview extends StatsOverviewWidget
      *
      * @return array<int, Stat>
      */
+
+    // Orden de visualizacion en el dashboard (1=primer widget)
+    protected static ?int $sort = 1;
+
     protected function getStats(): array
     {
         // Obtiene la fecha de hoy al inicio del dia (00:00:00)

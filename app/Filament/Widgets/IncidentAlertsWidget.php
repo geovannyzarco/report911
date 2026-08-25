@@ -22,6 +22,9 @@ class IncidentAlertsWidget extends StatsOverviewWidget
     /**
      * Retorna el titulo que se muestra encima del widget en el dashboard.
      */
+    // Orden de visualizacion en el dashboard (1=primer widget)
+    protected static ?int $sort = 2;
+
     protected function getHeading(): string
     {
         return 'Incidentes Abiertos';

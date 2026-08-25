@@ -26,7 +26,7 @@ class ActiveEventsWidget extends BaseWidget
     protected static ?string $heading = 'Incidentes Activos (Ultimas 24h)';
 
     // Orden de visualizacion en el dashboard (1=primer widget)
-    protected static ?int $sort = 2;
+    protected static ?int $sort = 3;
 
     // Intervalo de polling: cada 30 segundos se re-ejecuta la query via AJAX
     // y se reemplaza solo el HTML de este widget sin recargar la pagina
