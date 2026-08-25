@@ -297,7 +297,7 @@ class CadReportService
     /**
      * Cuenta incidentes no cerrados agrupados por tipo de respuesta (ResponseType).
      * Usa la tabla Responses para obtener el tipo de despacho asociado a cada incidente.
-     * Retorna array con labels (nombres) y data (cantidades) para graficas.
+     * Optimizado con subquery para filtrar incidentes antes del JOIN.
      *
      * @return array{labels: array<int, string>, data: array<int, int>}
      */
@@ -305,18 +305,27 @@ class CadReportService
     {
         $hoy = Carbon::today()->format('Ymd');
 
-        $resultados = DB::connection('sqlsrv_cad')->table('Incidents as i')
-            ->join('Responses as r', 'r.Incident', '=', 'i.OID')
-            ->join('ResponseTypes as rt', 'r.ResponseType', '=', 'rt.OID')
-            ->select([
-                'rt.Name as Tipo',
-                DB::raw('COUNT(DISTINCT i.OID) as Total'),
-            ])
+        // Subquery: obtiene solo los OIDs de incidentes de hoy no cerrados
+        // Esto reduce dramaticamente el volumen antes del JOIN con Responses
+        $incidentQuery = DB::connection('sqlsrv_cad')->table('Incidents as i')
+            ->select('i.OID')
             ->whereNotIn('i.Status', [6, 7])
             ->where(function ($q) {
                 $q->where('i.Deleted', 0)->orWhereNull('i.Deleted');
             })
-            ->whereRaw("i.CreationTime >= '$hoy'")
+            ->whereRaw("i.CreationTime >= '$hoy'");
+
+        // Query principal: cuenta incidentes agrupados por ResponseType
+        // Usa la subquery como tabla derivada para reducir el dataset
+        $resultados = DB::connection('sqlsrv_cad')->table('Responses as r')
+            ->join('ResponseTypes as rt', 'r.ResponseType', '=', 'rt.OID')
+            ->joinSub($incidentQuery, 'i', function ($join) {
+                $join->on('r.Incident', '=', 'i.OID');
+            })
+            ->select([
+                'rt.Name as Tipo',
+                DB::raw('COUNT(DISTINCT i.OID) as Total'),
+            ])
             ->groupBy('rt.Name')
             ->orderByDesc('Total')
             ->limit(10)
