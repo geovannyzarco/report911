@@ -293,4 +293,43 @@ class CadReportService
             'sin_recursos' => $sinRecursos,
         ];
     }
+
+    /**
+     * Cuenta incidentes no cerrados agrupados por tipo/clasificacion.
+     * Retorna array con labels (nombres) y data (cantidades) para graficas.
+     *
+     * @return array{labels: array<int, string>, data: array<int, int>}
+     */
+    public function getIncidentesPorClasificacion(): array
+    {
+        $hoy = Carbon::today()->format('Ymd');
+
+        $resultados = DB::connection('sqlsrv_cad')->table('Incidents as i')
+            ->select([
+                DB::raw("COALESCE(cl.Name, 'Sin Clasificacion') as Clasificacion"),
+                DB::raw('COUNT(i.OID) as Total'),
+            ])
+            ->leftJoin('Classifications as cl', 'i.Classification', '=', 'cl.OID')
+            ->whereNotIn('i.Status', [6, 7])
+            ->where(function ($q) {
+                $q->where('i.Deleted', 0)->orWhereNull('i.Deleted');
+            })
+            ->whereRaw("i.CreationTime >= '$hoy'")
+            ->groupBy(DB::raw("COALESCE(cl.Name, 'Sin Clasificacion')"))
+            ->orderByDesc('Total')
+            ->get();
+
+        $labels = [];
+        $data = [];
+
+        foreach ($resultados as $row) {
+            $labels[] = $row->Clasificacion;
+            $data[] = (int) $row->Total;
+        }
+
+        return [
+            'labels' => $labels,
+            'data' => $data,
+        ];
+    }
 }
