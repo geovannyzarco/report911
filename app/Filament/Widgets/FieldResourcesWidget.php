@@ -2,14 +2,11 @@
 
 namespace App\Filament\Widgets;
 
-use App\Services\CadMonitorService;
+use App\Models\Cad\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
 use Filament\Widgets\TableWidget as BaseWidget;
 
-/**
- * Widget que muestra las unidades/recursos actualmente en campo.
- */
 class FieldResourcesWidget extends BaseWidget
 {
     protected static ?string $heading = 'Unidades en Campo';
@@ -20,8 +17,25 @@ class FieldResourcesWidget extends BaseWidget
 
     public function table(Table $table): Table
     {
+        $query = Resource::query()
+            ->select([
+                'Resources.OID',
+                'Resources.Name as CodigoUnidad',
+                'st.Name as EstadoUnidad',
+                'sta.Name as Estacion',
+                'i.SequenceNumber as Incidente',
+                'rt.Name as TipoRespuesta',
+            ])
+            ->leftJoin('Statuses as st', 'Resources.Status', '=', 'st.OID')
+            ->leftJoin('Stations as sta', 'Resources.Station', '=', 'sta.OID')
+            ->leftJoin('Responses as r', 'Resources.ActiveResponse', '=', 'r.OID')
+            ->leftJoin('Incidents as i', 'Resources.ActiveIncident', '=', 'i.OID')
+            ->leftJoin('ResponseTypes as rt', 'r.ResponseType', '=', 'rt.OID')
+            ->where('Resources.ActiveResponse', '!=', 0)
+            ->whereNotNull('Resources.ActiveResponse');
+
         return $table
-            ->query(fn () => (new CadMonitorService)->getRecursosEnCampo())
+            ->query(fn () => $query)
             ->columns([
                 Tables\Columns\TextColumn::make('CodigoUnidad')
                     ->label('Unidad')

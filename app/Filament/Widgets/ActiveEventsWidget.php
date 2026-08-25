@@ -2,14 +2,13 @@
 
 namespace App\Filament\Widgets;
 
-use App\Services\CadMonitorService;
+use App\Models\Cad\Incident;
 use Filament\Tables;
 use Filament\Tables\Table;
 use Filament\Widgets\TableWidget as BaseWidget;
+use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
 
-/**
- * Widget que muestra los incidentes activos en tiempo real.
- */
 class ActiveEventsWidget extends BaseWidget
 {
     protected static ?string $heading = 'Incidentes Activos (Ultimas 24h)';
@@ -20,8 +19,32 @@ class ActiveEventsWidget extends BaseWidget
 
     public function table(Table $table): Table
     {
+        $desde = Carbon::now()->subDay()->format('Ymd');
+
+        $query = Incident::query()
+            ->select([
+                'Incidents.OID',
+                'Incidents.SequenceNumber',
+                'Incidents.CreationTime',
+                'cl.Name as Clasificacion',
+                'pr.Name as Prioridad',
+                'st.Name as Estado',
+                'ag.Name as Agencia',
+                DB::raw('COALESCE(a.DisplayName, a.LogonName) as Operador'),
+            ])
+            ->leftJoin('Classifications as cl', 'Incidents.Classification', '=', 'cl.OID')
+            ->leftJoin('Priorities as pr', 'Incidents.Priority', '=', 'pr.OID')
+            ->leftJoin('Statuses as st', 'Incidents.Status', '=', 'st.OID')
+            ->leftJoin('Agencies as ag', 'Incidents.PrimaryAgency', '=', 'ag.OID')
+            ->leftJoin('Agents as a', 'Incidents.Agent', '=', 'a.OID')
+            ->whereNotIn('Incidents.Status', [6, 7, 8])
+            ->where(function ($q) {
+                $q->where('Incidents.Deleted', 0)->orWhereNull('Incidents.Deleted');
+            })
+            ->whereRaw("Incidents.CreationTime >= '$desde'");
+
         return $table
-            ->query(fn () => (new CadMonitorService)->getEventosActivos())
+            ->query(fn () => $query)
             ->columns([
                 Tables\Columns\TextColumn::make('SequenceNumber')
                     ->label('Incidente')

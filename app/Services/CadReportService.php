@@ -19,7 +19,7 @@ class CadReportService
     private const OVERFLOW_VALUE = 2147483647;
 
     /**
-     * Formato YYYYMMDD para SQL Server (aceptado independientemente del idioma).
+     * Formato YYYYMMDD para SQL Server.
      */
     private function sqlDate(Carbon $date): string
     {
@@ -36,7 +36,7 @@ class CadReportService
         ?string $prioridad = null,
     ): Collection {
         $desdeStr = $this->sqlDate($desde);
-        $hastaStr = $this->sqlDate($hasta);
+        $hastaStr = $this->sqlDate($hasta->copy()->addDay());
 
         $query = DB::connection('sqlsrv_cad')->table('VMIS_RESP_STATUSCHANGES as sc')
             ->select([
@@ -78,7 +78,7 @@ class CadReportService
         Carbon $hasta,
     ): Collection {
         $desdeStr = $this->sqlDate($desde);
-        $hastaStr = $this->sqlDate($hasta);
+        $hastaStr = $this->sqlDate($hasta->copy()->addDay());
 
         return DB::connection('sqlsrv_cad')->table('Incidents as i')
             ->select([
@@ -111,7 +111,7 @@ class CadReportService
         Carbon $hasta,
     ): Collection {
         $desdeStr = $this->sqlDate($desde);
-        $hastaStr = $this->sqlDate($hasta);
+        $hastaStr = $this->sqlDate($hasta->copy()->addDay());
 
         return DB::connection('sqlsrv_cad')->table('VMIS_RESP_RESOACTIVETIMES as rat')
             ->select([
@@ -138,7 +138,7 @@ class CadReportService
         Carbon $hasta,
     ): Collection {
         $desdeStr = $this->sqlDate($desde);
-        $hastaStr = $this->sqlDate($hasta);
+        $hastaStr = $this->sqlDate($hasta->copy()->addDay());
 
         return DB::connection('sqlsrv_cad')->table('Responses as r')
             ->select([
@@ -173,7 +173,7 @@ class CadReportService
         Carbon $hasta,
     ): Collection {
         $desdeStr = $this->sqlDate($desde);
-        $hastaStr = $this->sqlDate($hasta);
+        $hastaStr = $this->sqlDate($hasta->copy()->addDay());
 
         return DB::connection('sqlsrv_cad')->table('Calls as c')
             ->select([
@@ -204,7 +204,7 @@ class CadReportService
         Carbon $hasta,
     ): array {
         $desdeStr = $this->sqlDate($desde);
-        $hastaStr = $this->sqlDate($hasta);
+        $hastaStr = $this->sqlDate($hasta->copy()->addDay());
 
         $totalIncidentes = DB::connection('sqlsrv_cad')->table('Incidents')
             ->whereRaw("CreationTime >= '$desdeStr'")
