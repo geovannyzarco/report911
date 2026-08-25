@@ -295,7 +295,8 @@ class CadReportService
     }
 
     /**
-     * Cuenta incidentes no cerrados agrupados por tipo/clasificacion.
+     * Cuenta incidentes no cerrados agrupados por tipo de respuesta (ResponseType).
+     * Usa la tabla Responses para obtener el tipo de despacho asociado a cada incidente.
      * Retorna array con labels (nombres) y data (cantidades) para graficas.
      *
      * @return array{labels: array<int, string>, data: array<int, int>}
@@ -305,25 +306,27 @@ class CadReportService
         $hoy = Carbon::today()->format('Ymd');
 
         $resultados = DB::connection('sqlsrv_cad')->table('Incidents as i')
+            ->join('Responses as r', 'r.Incident', '=', 'i.OID')
+            ->join('ResponseTypes as rt', 'r.ResponseType', '=', 'rt.OID')
             ->select([
-                DB::raw("COALESCE(cl.Name, 'Sin Clasificacion') as Clasificacion"),
-                DB::raw('COUNT(i.OID) as Total'),
+                'rt.Name as Tipo',
+                DB::raw('COUNT(DISTINCT i.OID) as Total'),
             ])
-            ->leftJoin('Classifications as cl', 'i.Classification', '=', 'cl.OID')
             ->whereNotIn('i.Status', [6, 7])
             ->where(function ($q) {
                 $q->where('i.Deleted', 0)->orWhereNull('i.Deleted');
             })
             ->whereRaw("i.CreationTime >= '$hoy'")
-            ->groupBy(DB::raw("COALESCE(cl.Name, 'Sin Clasificacion')"))
+            ->groupBy('rt.Name')
             ->orderByDesc('Total')
+            ->limit(10)
             ->get();
 
         $labels = [];
         $data = [];
 
         foreach ($resultados as $row) {
-            $labels[] = $row->Clasificacion;
+            $labels[] = $row->Tipo;
             $data[] = (int) $row->Total;
         }
 
