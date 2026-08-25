@@ -233,4 +233,64 @@ class CadReportService
             'total_despachos' => $totalDespachos,
         ];
     }
+
+    /**
+     * Estadisticas de incidentes abiertos: sin despacho, sin cerrar, sin recursos asignados.
+     * Estados del CAD: 1=Req_Despacho, 6=Terminado, 7=Cerrado.
+     */
+    public function getEstadisticasIncidentesAbiertos(): array
+    {
+        $connection = DB::connection('sqlsrv_cad');
+        $hoy = Carbon::today()->format('Ymd');
+
+        // Incidentes de hoy sin despacho: no tienen ningun Response asociado
+        $sinDespacho = $connection->table('Incidents as i')
+            ->whereNotExists(function ($q) {
+                $q->select(DB::raw(1))
+                    ->from('Responses as r')
+                    ->whereRaw('r.Incident = i.OID');
+            })
+            ->where(function ($q) {
+                $q->where('i.Deleted', 0)->orWhereNull('i.Deleted');
+            })
+            ->whereRaw("i.CreationTime >= '$hoy'")
+            ->count();
+
+        // Incidentes de hoy sin cerrar: status no es Terminado(6) ni Cerrado(7)
+        $sinCerrar = $connection->table('Incidents as i')
+            ->whereNotIn('i.Status', [6, 7])
+            ->where(function ($q) {
+                $q->where('i.Deleted', 0)->orWhereNull('i.Deleted');
+            })
+            ->whereRaw("i.CreationTime >= '$hoy'")
+            ->count();
+
+        // Incidentes de hoy sin recursos asignados: tienen al menos un Response pero
+        // ninguno tiene unidades asignadas (tabla Assign con Active=1)
+        $sinRecursos = $connection->table('Incidents as i')
+            ->whereExists(function ($q) {
+                $q->select(DB::raw(1))
+                    ->from('Responses as r')
+                    ->whereRaw('r.Incident = i.OID');
+            })
+            ->whereNotExists(function ($q) {
+                $q->select(DB::raw(1))
+                    ->from('Responses as r')
+                    ->join('Assign as a', 'a.Response', '=', 'r.OID')
+                    ->whereRaw('r.Incident = i.OID')
+                    ->where('a.Active', 1);
+            })
+            ->where(function ($q) {
+                $q->where('i.Deleted', 0)->orWhereNull('i.Deleted');
+            })
+            ->whereNotIn('i.Status', [6, 7])
+            ->whereRaw("i.CreationTime >= '$hoy'")
+            ->count();
+
+        return [
+            'sin_despacho' => $sinDespacho,
+            'sin_cerrar' => $sinCerrar,
+            'sin_recursos' => $sinRecursos,
+        ];
+    }
 }

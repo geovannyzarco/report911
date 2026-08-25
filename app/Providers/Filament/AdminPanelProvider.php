@@ -5,6 +5,7 @@ namespace App\Providers\Filament;
 use App\Filament\Pages\Auth\Login;
 use App\Filament\Widgets\ActiveEventsWidget;
 use App\Filament\Widgets\FieldResourcesWidget;
+use App\Filament\Widgets\IncidentAlertsWidget;
 use App\Filament\Widgets\StatsOverview;
 use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\AuthenticateSession;
@@ -41,6 +42,7 @@ class AdminPanelProvider extends PanelProvider
             ->discoverWidgets(in: app_path('Filament/Widgets'), for: 'App\Filament\Widgets')
             ->widgets([
                 StatsOverview::class,
+                IncidentAlertsWidget::class,
                 ActiveEventsWidget::class,
                 FieldResourcesWidget::class,
             ])
