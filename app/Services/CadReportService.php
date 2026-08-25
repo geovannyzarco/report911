@@ -208,17 +208,17 @@ class CadReportService
         $hastaStr = $this->sqlDate($hasta->copy()->addDay());
 
         // Una sola query que cuenta los 3 totales via UNION ALL
-        // Mucho mas rapido que 3 queries separadas
+        // NOLOCK evita bloqueos/deadlocks contra el CAD en produccion
         $resultados = DB::connection('sqlsrv_cad')->select("
-            SELECT 'incidentes' as tipo, COUNT(*) as total FROM Incidents
+            SELECT 'incidentes' as tipo, COUNT(*) as total FROM Incidents WITH (NOLOCK)
             WHERE CreationTime >= '$desdeStr' AND CreationTime <= '$hastaStr'
             AND (Deleted = 0 OR Deleted IS NULL)
             UNION ALL
-            SELECT 'llamadas', COUNT(*) FROM Calls
+            SELECT 'llamadas', COUNT(*) FROM Calls WITH (NOLOCK)
             WHERE CreationTime >= '$desdeStr' AND CreationTime <= '$hastaStr'
             AND (Deleted = 0 OR Deleted IS NULL)
             UNION ALL
-            SELECT 'despachos', COUNT(*) FROM Responses
+            SELECT 'despachos', COUNT(*) FROM Responses WITH (NOLOCK)
             WHERE CreationTime >= '$desdeStr' AND CreationTime <= '$hastaStr'
         ");
 
@@ -234,67 +234,43 @@ class CadReportService
     /**
      * Estadisticas de incidentes abiertos: sin despacho, sin cerrar, sin recursos asignados.
      * Estados del CAD: 1=Req_Despacho, 6=Terminado, 7=Cerrado.
+     * USA CTEs para calcular los 3 conteos en una sola pasada sobre Incidents.
      */
     public function getEstadisticasIncidentesAbiertos(): array
     {
-        $connection = DB::connection('sqlsrv_cad');
         $hoy = Carbon::today()->format('Ymd');
 
-        // Incidentes de hoy sin despacho: no tienen ningun Response asociado
-        $sinDespacho = $connection->table('Incidents as i')
-            ->whereNotExists(function ($q) {
-                $q->select(DB::raw(1))
-                    ->from('Responses as r')
-                    ->whereRaw('r.Incident = i.OID');
-            })
-            ->where(function ($q) {
-                $q->where('i.Deleted', 0)->orWhereNull('i.Deleted');
-            })
-            ->whereRaw("i.CreationTime >= '$hoy'")
-            ->count();
-
-        // Incidentes de hoy sin cerrar: status no es Terminado(6) ni Cerrado(7)
-        $sinCerrar = $connection->table('Incidents as i')
-            ->whereNotIn('i.Status', [6, 7])
-            ->where(function ($q) {
-                $q->where('i.Deleted', 0)->orWhereNull('i.Deleted');
-            })
-            ->whereRaw("i.CreationTime >= '$hoy'")
-            ->count();
-
-        // Incidentes de hoy sin recursos asignados: tienen al menos un Response pero
-        // ninguno tiene unidades asignadas (tabla Assign con Active=1)
-        $sinRecursos = $connection->table('Incidents as i')
-            ->whereExists(function ($q) {
-                $q->select(DB::raw(1))
-                    ->from('Responses as r')
-                    ->whereRaw('r.Incident = i.OID');
-            })
-            ->whereNotExists(function ($q) {
-                $q->select(DB::raw(1))
-                    ->from('Responses as r')
-                    ->join('Assign as a', 'a.Response', '=', 'r.OID')
-                    ->whereRaw('r.Incident = i.OID')
-                    ->where('a.Active', 1);
-            })
-            ->where(function ($q) {
-                $q->where('i.Deleted', 0)->orWhereNull('i.Deleted');
-            })
-            ->whereNotIn('i.Status', [6, 7])
-            ->whereRaw("i.CreationTime >= '$hoy'")
-            ->count();
+        $resultado = DB::connection('sqlsrv_cad')->select("
+            WITH base AS (
+                SELECT i.OID, i.Status
+                FROM Incidents i WITH (NOLOCK)
+                WHERE (i.Deleted = 0 OR i.Deleted IS NULL)
+                AND i.CreationTime >= '$hoy'
+            ),
+            con_resp AS (
+                SELECT DISTINCT Incident FROM Responses WITH (NOLOCK)
+            ),
+            con_asign AS (
+                SELECT DISTINCT r.Incident
+                FROM Responses r WITH (NOLOCK)
+                INNER JOIN Assign a WITH (NOLOCK) ON a.Response = r.OID AND a.Active = 1
+            )
+            SELECT
+                (SELECT COUNT(*) FROM base b LEFT JOIN con_resp cr ON b.OID = cr.Incident WHERE cr.Incident IS NULL) as sin_despacho,
+                (SELECT COUNT(*) FROM base b WHERE b.Status NOT IN (6, 7)) as sin_cerrar,
+                (SELECT COUNT(*) FROM base b INNER JOIN con_resp cr ON b.OID = cr.Incident LEFT JOIN con_asign ca ON b.OID = ca.Incident WHERE ca.Incident IS NULL AND b.Status NOT IN (6, 7)) as sin_recursos
+        ")[0];
 
         return [
-            'sin_despacho' => $sinDespacho,
-            'sin_cerrar' => $sinCerrar,
-            'sin_recursos' => $sinRecursos,
+            'sin_despacho' => (int) ($resultado->sin_despacho ?? 0),
+            'sin_cerrar' => (int) ($resultado->sin_cerrar ?? 0),
+            'sin_recursos' => (int) ($resultado->sin_recursos ?? 0),
         ];
     }
 
     /**
      * Cuenta incidentes no cerrados agrupados por tipo de respuesta (ResponseType).
-     * Usa la tabla Responses para obtener el tipo de despacho asociado a cada incidente.
-     * Optimizado con subquery para filtrar incidentes antes del JOIN.
+     * Convertido a raw SQL con NOLOCK para evitar deadlocks.
      *
      * @return array{labels: array<int, string>, data: array<int, int>}
      */
@@ -302,31 +278,17 @@ class CadReportService
     {
         $hoy = Carbon::today()->format('Ymd');
 
-        // Subquery: obtiene solo los OIDs de incidentes de hoy no cerrados
-        // Esto reduce dramaticamente el volumen antes del JOIN con Responses
-        $incidentQuery = DB::connection('sqlsrv_cad')->table('Incidents as i')
-            ->select('i.OID')
-            ->whereNotIn('i.Status', [6, 7])
-            ->where(function ($q) {
-                $q->where('i.Deleted', 0)->orWhereNull('i.Deleted');
-            })
-            ->whereRaw("i.CreationTime >= '$hoy'");
-
-        // Query principal: cuenta incidentes agrupados por ResponseType
-        // Usa la subquery como tabla derivada para reducir el dataset
-        $resultados = DB::connection('sqlsrv_cad')->table('Responses as r')
-            ->join('ResponseTypes as rt', 'r.ResponseType', '=', 'rt.OID')
-            ->joinSub($incidentQuery, 'i', function ($join) {
-                $join->on('r.Incident', '=', 'i.OID');
-            })
-            ->select([
-                'rt.Name as Tipo',
-                DB::raw('COUNT(DISTINCT i.OID) as Total'),
-            ])
-            ->groupBy('rt.Name')
-            ->orderByDesc('Total')
-            ->limit(10)
-            ->get();
+        $resultados = DB::connection('sqlsrv_cad')->select("
+            SELECT TOP 10 rt.Name as Tipo, COUNT(DISTINCT i.OID) as Total
+            FROM Responses r WITH (NOLOCK)
+            INNER JOIN ResponseTypes rt WITH (NOLOCK) ON r.ResponseType = rt.OID
+            INNER JOIN Incidents i WITH (NOLOCK) ON r.Incident = i.OID
+            WHERE i.Status NOT IN (6, 7)
+            AND (i.Deleted = 0 OR i.Deleted IS NULL)
+            AND i.CreationTime >= '$hoy'
+            GROUP BY rt.Name
+            ORDER BY Total DESC
+        ");
 
         $labels = [];
         $data = [];

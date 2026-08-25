@@ -92,8 +92,6 @@ class ActiveEventsWidget extends BaseWidget
             // Orden por defecto: los mas recientes primero
             ->defaultSort('CreationTime', 'desc')
             // Paginacion: muestra 10, 25 o 50 registros por pagina
-            ->paginated([10, 25, 50])
-            // Polling: cada 30 segundos re-ejecuta la query y actualiza solo esta tabla
-            ->poll('30s');
+            ->paginated([10, 25, 50]);
     }
 }
