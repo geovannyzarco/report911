@@ -2,17 +2,18 @@
 
 namespace App\Filament\Widgets;
 
-use Filament\Widgets\Widget;
-use Illuminate\Contracts\View\View;
-use Illuminate\Support\Carbon;
-use Illuminate\Support\Facades\DB;
+use App\Services\CadReportService;
+use Filament\Tables;
+use Filament\Tables\Table;
+use Filament\Widgets\TableWidget as BaseWidget;
 
 /**
  * Widget: DispatchStatusTable
  * Nombre: Estado de Despachos (Tabla)
  * Descripcion: Muestra una tabla con los estados de despacho y sus cantidades del dia.
+ * Usa el metodo records() de Filament para datos personalizados.
  */
-class DispatchStatusTable extends Widget
+class DispatchStatusTable extends BaseWidget
 {
     protected static ?string $heading = 'Detalle de Despachos por Estado';
 
@@ -21,51 +22,46 @@ class DispatchStatusTable extends Widget
     protected static string|false $pollingInterval = false;
 
     /**
-     * Datos de la tabla: estados y cantidades.
+     * Define la estructura de la tabla.
      */
-    public array $estados = [];
-
-    public int $total = 0;
-
-    /**
-     * Carga los datos al inicializar el widget.
-     */
-    public function mount(): void
+    public function table(Table $table): Table
     {
-        $this->cargarDatos();
-    }
+        $stats = (new CadReportService)->getIncidentesPorEstado();
 
-    /**
-     * Retorna la vista Blade para este widget.
-     */
-    public function render(): View
-    {
-        return view('filament.widgets.dispatch-status-table', [
-            'estados' => $this->estados,
-            'total' => $this->total,
-            'heading' => static::$heading,
-        ]);
-    }
+        // Convierte los datos a un array indexado para Filament
+        $records = [];
+        foreach ($stats['labels'] as $index => $estado) {
+            $records[$index] = [
+                'id' => $index,
+                'estado' => $estado,
+                'cantidad' => $stats['data'][$index] ?? 0,
+            ];
+        }
 
-    /**
-     * Recarga los datos.
-     */
-    public function cargarDatos(): void
-    {
-        $hoy = Carbon::today()->format('Ymd');
+        return $table
+            ->records(fn () => $records)
+            ->columns([
+                Tables\Columns\TextColumn::make('estado')
+                    ->label('Estado')
+                    ->badge()
+                    ->color(fn (string $state): string => match ($state) {
+                        'Cerrado' => 'success',
+                        'Terminado' => 'info',
+                        'En Sitio' => 'danger',
+                        'En Ruta' => 'warning',
+                        'Req_Despacho' => 'gray',
+                        'Despachado' => 'info',
+                        default => 'gray',
+                    })
+                    ->weight('bold'),
 
-        $resultados = DB::connection('sqlsrv_cad')->select("
-            SELECT st.Name as Estado, COUNT(*) as Cantidad
-            FROM Responses r WITH (NOLOCK)
-            INNER JOIN Incidents i WITH (NOLOCK) ON r.Incident = i.OID
-            INNER JOIN Statuses st WITH (NOLOCK) ON r.Status = st.OID
-            WHERE (i.Deleted = 0 OR i.Deleted IS NULL)
-            AND i.CreationTime >= '$hoy'
-            GROUP BY st.Name
-            ORDER BY Cantidad DESC
-        ");
-
-        $this->estados = $resultados;
-        $this->total = array_sum(array_column($resultados, 'Cantidad'));
+                Tables\Columns\TextColumn::make('cantidad')
+                    ->label('Cantidad')
+                    ->numeric()
+                    ->sortable()
+                    ->weight('bold'),
+            ])
+            ->defaultSort('cantidad', 'desc')
+            ->paginated(false);
     }
 }
