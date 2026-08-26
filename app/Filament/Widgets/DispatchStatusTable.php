@@ -26,22 +26,26 @@ class DispatchStatusTable extends BaseWidget
     {
         $hoy = Carbon::today()->format('Ymd');
 
-        $query = Response::query()
-            ->select([
-                'st.Name as Estado',
-                DB::raw('COUNT(*) as Cantidad'),
-            ])
-            ->join('Incidents as i', 'Responses.Incident', '=', 'i.OID')
-            ->join('Statuses as st', 'Responses.Status', '=', 'st.OID')
-            ->where(function ($q) {
-                $q->where('i.Deleted', 0)->orWhereNull('i.Deleted');
-            })
-            ->whereRaw("i.CreationTime >= '$hoy'")
-            ->groupBy('st.Name')
-            ->orderByDesc('Cantidad');
-
         return $table
-            ->query(fn () => $query)
+            ->query(
+                Response::query()
+                    ->select([
+                        'st.Name as Estado',
+                        DB::raw('COUNT(*) as Cantidad'),
+                    ])
+                    ->join('Incidents as i', 'Responses.Incident', '=', 'i.OID')
+                    ->join('Statuses as st', 'Responses.Status', '=', 'st.OID')
+                    ->where(function ($q) {
+                        $q->where('i.Deleted', 0)->orWhereNull('i.Deleted');
+                    })
+                    ->whereRaw("i.CreationTime >= '$hoy'")
+                    ->groupBy('st.Name')
+            )
+            // Sobreescribe el ORDER BY que Filament agrega automaticamente
+            ->modifyQueryUsing(fn ($query) => $query
+                ->getQuery()
+                ->orders = [['column' => 'Cantidad', 'direction' => 'desc']]
+            )
             ->columns([
                 Tables\Columns\TextColumn::make('Estado')
                     ->label('Estado')
