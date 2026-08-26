@@ -1,4 +1,4 @@
-<x-filament-widgets::widget>
+<div>
     <x-filament::section>
         <x-slot name="heading">
             {{ $heading }}
@@ -64,4 +64,4 @@
             </table>
         </div>
     </x-filament::section>
-</x-filament-widgets::widget>
+</div>

@@ -10,8 +10,6 @@ use Illuminate\Support\Facades\DB;
  * Widget: DispatchStatusTable
  * Nombre: Estado de Despachos (Tabla)
  * Descripcion: Muestra una tabla con los estados de despacho y sus cantidades del dia.
- * Usa un widget Blade en lugar de Filament TableWidget para evitar problemas
- * con GROUP BY y el ORDER BY automatico de Filament.
  */
 class DispatchStatusTable extends Widget
 {
@@ -20,14 +18,6 @@ class DispatchStatusTable extends Widget
     protected static ?int $sort = 4;
 
     protected static string|false $pollingInterval = false;
-
-    /**
-     * Retorna la vista Blade para este widget.
-     */
-    protected function getView(): string
-    {
-        return 'filament.widgets.dispatch-status-table';
-    }
 
     /**
      * Datos de la tabla: estados y cantidades.
@@ -45,7 +35,19 @@ class DispatchStatusTable extends Widget
     }
 
     /**
-     * Recarga los datos (para uso futuro con polling).
+     * Retorna la vista Blade para este widget.
+     */
+    public function render()
+    {
+        return view('filament.widgets.dispatch-status-table', [
+            'estados' => $this->estados,
+            'total' => $this->total,
+            'heading' => static::$heading,
+        ]);
+    }
+
+    /**
+     * Recarga los datos.
      */
     public function cargarDatos(): void
     {
