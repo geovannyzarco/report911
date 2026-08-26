@@ -40,37 +40,32 @@ class IncidentAlertsWidget extends StatsOverviewWidget
     }
 
     /**
-     * Define las tres tarjetas de alertas de incidentes abiertos.
-     * Cada Stat representa un tipo de incidente que necesita atencion.
+     * Define las tarjetas de alertas de incidentes abiertos.
      *
      * @return array<int, Stat>
      */
     protected function getStats(): array
     {
-        // Consulta las estadisticas de incidentes abiertos del dia desde SQL Server
         $stats = (new CadReportService)->getEstadisticasIncidentesAbiertos();
 
         return [
-            // Tarjeta 1 (roja): Incidentes que no tienen ningun despacho/response asociado
-            // Significa que nadie ha sido despachado a este incidente
+            // Tarjeta 1 (roja): Incidentes sin ninguna unidad asignada en Assign
             Stat::make('Sin Despacho', number_format($stats['sin_despacho']))
-                ->description('Incidentes sin respuesta asignada')
-                ->descriptionIcon('heroicon-m-exclamation-triangle')   // Icono de advertencia
-                ->color('danger'),                                     // Color rojo - requiere accion urgente
+                ->description('Sin unidad asignada')
+                ->descriptionIcon('heroicon-m-exclamation-triangle')
+                ->color('danger'),
 
-            // Tarjeta 2 (amarilla): Incidentes que estan activos y no han sido cerrados
-            // Incluye Req_Despacho, Despachado, En Ruta, En Sitio, Apilada
+            // Tarjeta 2 (amarilla): Incidentes activos no finalizados
             Stat::make('Sin Cerrar', number_format($stats['sin_cerrar']))
-                ->description('Incidentes activos / no finalizados')
-                ->descriptionIcon('heroicon-m-clock')                  // Icono de reloj
-                ->color('warning'),                                    // Color amarillo - monitoreo
+                ->description('Activos / no finalizados')
+                ->descriptionIcon('heroicon-m-clock')
+                ->color('warning'),
 
-            // Tarjeta 3 (azul): Incidentes que tienen al menos un despacho pero
-            // ninguno tiene unidades asignadas en la tabla Assign (Active=1)
-            Stat::make('Sin Recursos', number_format($stats['sin_recursos']))
-                ->description('Con despacho pero sin unidades asignadas')
-                ->descriptionIcon('heroicon-m-users')                  // Icono de personas
-                ->color('info'),                                       // Color azul - informativo
+            // Tarjeta 3 (azul): Total de incidentes hoy
+            Stat::make('Total Hoy', number_format($stats['total']))
+                ->description('Incidentes creados hoy')
+                ->descriptionIcon('heroicon-m-document-text')
+                ->color('info'),
         ];
     }
 }
