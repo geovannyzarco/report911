@@ -21,7 +21,13 @@ class DispatchStatusTable extends Widget
 
     protected static string|false $pollingInterval = false;
 
-    protected static string $view = 'filament.widgets.dispatch-status-table';
+    /**
+     * Retorna la vista Blade para este widget.
+     */
+    protected function getView(): string
+    {
+        return 'filament.widgets.dispatch-status-table';
+    }
 
     /**
      * Datos de la tabla: estados y cantidades.
