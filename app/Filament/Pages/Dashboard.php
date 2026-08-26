@@ -8,6 +8,7 @@ use App\Filament\Widgets\DispatchStatusWidget;
 use App\Filament\Widgets\IncidentAlertsWidget;
 use App\Filament\Widgets\IncidentClassificationChart;
 use App\Filament\Widgets\IncidentsByStatusChart;
+use App\Filament\Widgets\IncidentTypesTable;
 use App\Filament\Widgets\StatsOverview;
 use Filament\Pages\Dashboard as BaseDashboard;
 
@@ -30,6 +31,7 @@ class Dashboard extends BaseDashboard
             DispatchStatusWidget::class,
             DispatchStatusTable::class,
             IncidentClassificationChart::class,
+            IncidentTypesTable::class,
             IncidentsByStatusChart::class,
             // ActiveEventsWidget::class,
         ];
