@@ -2,6 +2,7 @@
 
 namespace App\Filament\Widgets;
 
+use App\Models\Cad\Response;
 use Filament\Tables;
 use Filament\Tables\Table;
 use Filament\Widgets\TableWidget as BaseWidget;
@@ -25,13 +26,15 @@ class DispatchStatusTable extends BaseWidget
     {
         $hoy = Carbon::today()->format('Ymd');
 
-        $query = DB::connection('sqlsrv_cad')->table('Responses as r')
+        // Usa el modelo Response con Eloquent Builder (requerido por Filament)
+        // Join a Incidents para filtrar por fecha y a Statuses para el nombre
+        $query = Response::query()
             ->select([
                 'st.Name as Estado',
                 DB::raw('COUNT(*) as Cantidad'),
             ])
-            ->join('Incidents as i', 'r.Incident', '=', 'i.OID')
-            ->join('Statuses as st', 'r.Status', '=', 'st.OID')
+            ->join('Incidents as i', 'Responses.Incident', '=', 'i.OID')
+            ->join('Statuses as st', 'Responses.Status', '=', 'st.OID')
             ->where(function ($q) {
                 $q->where('i.Deleted', 0)->orWhereNull('i.Deleted');
             })
