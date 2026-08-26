@@ -232,41 +232,39 @@ class CadReportService
     }
 
     /**
-     * Estadisticas de incidentes abiertos de hoy.
-     *
-     * - sin_despacho: incidentes sin ninguna unidad asignada (Assign con Active=1)
-     *   El CAD crea Response automaticamente al crear el incidente (es el tipo de evento),
-     *   pero la unidad real se asigna en la tabla Assign.
-     * - sin_cerrar: incidentes cuyo status no es Terminado(6) ni Cerrado(7)
-     * - total: total de incidentes creados hoy
+     * Estadisticas de incidentes abiertos: sin despacho, sin cerrar, sin recursos asignados.
+     * Estados del CAD: 1=Req_Despacho, 6=Terminado, 7=Cerrado.
+     * USA CTEs para calcular los 3 conteos en una sola pasada sobre Incidents.
      */
     public function getEstadisticasIncidentesAbiertos(): array
     {
         $hoy = Carbon::today()->format('Ymd');
 
         $resultado = DB::connection('sqlsrv_cad')->select("
+            WITH base AS (
+                SELECT i.OID, i.Status
+                FROM Incidents i WITH (NOLOCK)
+                WHERE (i.Deleted = 0 OR i.Deleted IS NULL)
+                AND i.CreationTime >= '$hoy'
+            ),
+            con_resp AS (
+                SELECT DISTINCT Incident FROM Responses WITH (NOLOCK)
+            ),
+            con_asign AS (
+                SELECT DISTINCT r.Incident
+                FROM Responses r WITH (NOLOCK)
+                INNER JOIN Assign a WITH (NOLOCK) ON a.Response = r.OID AND a.Active = 1
+            )
             SELECT
-                (SELECT COUNT(*) FROM Incidents i WITH (NOLOCK)
-                 WHERE (i.Deleted = 0 OR i.Deleted IS NULL)
-                 AND i.CreationTime >= '$hoy'
-                 AND NOT EXISTS (
-                     SELECT 1 FROM Responses r WITH (NOLOCK)
-                     INNER JOIN Assign a WITH (NOLOCK) ON a.Response = r.OID AND a.Active = 1
-                     WHERE r.Incident = i.OID
-                 )) as sin_despacho,
-                (SELECT COUNT(*) FROM Incidents i WITH (NOLOCK)
-                 WHERE (i.Deleted = 0 OR i.Deleted IS NULL)
-                 AND i.CreationTime >= '$hoy'
-                 AND i.Status NOT IN (6, 7)) as sin_cerrar,
-                (SELECT COUNT(*) FROM Incidents i WITH (NOLOCK)
-                 WHERE (i.Deleted = 0 OR i.Deleted IS NULL)
-                 AND i.CreationTime >= '$hoy') as total
+                (SELECT COUNT(*) FROM base b LEFT JOIN con_resp cr ON b.OID = cr.Incident WHERE cr.Incident IS NULL) as sin_despacho,
+                (SELECT COUNT(*) FROM base b WHERE b.Status NOT IN (6, 7)) as sin_cerrar,
+                (SELECT COUNT(*) FROM base b INNER JOIN con_resp cr ON b.OID = cr.Incident LEFT JOIN con_asign ca ON b.OID = ca.Incident WHERE ca.Incident IS NULL AND b.Status NOT IN (6, 7)) as sin_recursos
         ")[0];
 
         return [
             'sin_despacho' => (int) ($resultado->sin_despacho ?? 0),
             'sin_cerrar' => (int) ($resultado->sin_cerrar ?? 0),
-            'total' => (int) ($resultado->total ?? 0),
+            'sin_recursos' => (int) ($resultado->sin_recursos ?? 0),
         ];
     }
 

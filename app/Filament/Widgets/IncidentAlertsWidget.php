@@ -40,31 +40,36 @@ class IncidentAlertsWidget extends StatsOverviewWidget
     }
 
     /**
-     * Define las tarjetas de alertas de incidentes abiertos.
+     * Define las tres tarjetas de alertas de incidentes abiertos.
+     * Cada Stat representa un tipo de incidente que necesita atencion.
      *
      * @return array<int, Stat>
      */
     protected function getStats(): array
     {
+        // Consulta las estadisticas de incidentes abiertos del dia desde SQL Server
         $stats = (new CadReportService)->getEstadisticasIncidentesAbiertos();
 
         return [
-            // Tarjeta 1 (roja): Incidentes sin ninguna unidad asignada en Assign
+            // Tarjeta 1 (roja): Incidentes que no tienen ningun despacho/response asociado
+            // Significa que nadie ha sido despachado a este incidente
             Stat::make('Sin Despacho', number_format($stats['sin_despacho']))
-                ->description('Sin unidad asignada')
+                ->description('Incidentes sin respuesta asignada')
                 ->descriptionIcon('heroicon-m-exclamation-triangle')
                 ->color('danger'),
 
-            // Tarjeta 2 (amarilla): Incidentes activos no finalizados
+            // Tarjeta 2 (amarilla): Incidentes que estan activos y no han sido cerrados
+            // Incluye Req_Despacho, Despachado, En Ruta, En Sitio, Apilada
             Stat::make('Sin Cerrar', number_format($stats['sin_cerrar']))
-                ->description('Activos / no finalizados')
+                ->description('Incidentes activos / no finalizados')
                 ->descriptionIcon('heroicon-m-clock')
                 ->color('warning'),
 
-            // Tarjeta 3 (azul): Total de incidentes hoy
-            Stat::make('Total Hoy', number_format($stats['total']))
-                ->description('Incidentes creados hoy')
-                ->descriptionIcon('heroicon-m-document-text')
+            // Tarjeta 3 (azul): Incidentes que tienen al menos un despacho pero
+            // ninguno tiene unidades asignadas en la tabla Assign (Active=1)
+            Stat::make('Sin Recursos', number_format($stats['sin_recursos']))
+                ->description('Con despacho pero sin unidades asignadas')
+                ->descriptionIcon('heroicon-m-users')
                 ->color('info'),
         ];
     }
