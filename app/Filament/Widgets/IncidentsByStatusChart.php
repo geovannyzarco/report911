@@ -15,7 +15,7 @@ use Filament\Widgets\ChartWidget;
 class IncidentsByStatusChart extends ChartWidget
 {
     // Titulo del widget
-    protected ?string $heading = 'Incidentes por Estado (Hoy)';
+    protected ?string $heading = 'Incidentes por Estado (Histórico)';
 
     // Altura de la grafica en pixeles
     protected ?string $maxHeight = '300';

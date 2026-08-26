@@ -305,7 +305,7 @@ class CadReportService
     }
 
     /**
-     * Cuenta incidentes de hoy agrupados por estado (Status).
+     * Cuenta todos los incidentes agrupados por estado (Status) hasta el dia de hoy.
      * Retorna labels (nombres de estado) y data (cantidades).
      *
      * @return array{labels: array<int, string>, data: array<int, int>}
@@ -319,7 +319,7 @@ class CadReportService
             FROM Incidents i WITH (NOLOCK)
             INNER JOIN Statuses st WITH (NOLOCK) ON i.Status = st.OID
             WHERE (i.Deleted = 0 OR i.Deleted IS NULL)
-            AND i.CreationTime >= '$hoy'
+            AND i.CreationTime <= '$hoy'
             GROUP BY st.Name
             ORDER BY Total DESC
         ");
