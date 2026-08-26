@@ -5,6 +5,7 @@ namespace App\Filament\Pages;
 use App\Filament\Widgets\ActiveEventsWidget;
 use App\Filament\Widgets\IncidentAlertsWidget;
 use App\Filament\Widgets\IncidentClassificationChart;
+use App\Filament\Widgets\IncidentsByStatusChart;
 use App\Filament\Widgets\StatsOverview;
 use Filament\Pages\Dashboard as BaseDashboard;
 
@@ -25,7 +26,8 @@ class Dashboard extends BaseDashboard
             StatsOverview::class,
             IncidentAlertsWidget::class,
             IncidentClassificationChart::class,
-            ActiveEventsWidget::class,
+            IncidentsByStatusChart::class,
+            // ActiveEventsWidget::class,
         ];
     }
 }

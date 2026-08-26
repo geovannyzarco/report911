@@ -303,4 +303,38 @@ class CadReportService
             'data' => $data,
         ];
     }
+
+    /**
+     * Cuenta incidentes de hoy agrupados por estado (Status).
+     * Retorna labels (nombres de estado) y data (cantidades).
+     *
+     * @return array{labels: array<int, string>, data: array<int, int>}
+     */
+    public function getIncidentesPorEstado(): array
+    {
+        $hoy = Carbon::today()->format('Ymd');
+
+        $resultados = DB::connection('sqlsrv_cad')->select("
+            SELECT TOP 15 st.Name as Estado, COUNT(i.OID) as Total
+            FROM Incidents i WITH (NOLOCK)
+            INNER JOIN Statuses st WITH (NOLOCK) ON i.Status = st.OID
+            WHERE (i.Deleted = 0 OR i.Deleted IS NULL)
+            AND i.CreationTime >= '$hoy'
+            GROUP BY st.Name
+            ORDER BY Total DESC
+        ");
+
+        $labels = [];
+        $data = [];
+
+        foreach ($resultados as $row) {
+            $labels[] = $row->Estado;
+            $data[] = (int) $row->Total;
+        }
+
+        return [
+            'labels' => $labels,
+            'data' => $data,
+        ];
+    }
 }
