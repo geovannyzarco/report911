@@ -3,6 +3,7 @@
 namespace App\Filament\Pages;
 
 use App\Filament\Widgets\ActiveEventsWidget;
+use App\Filament\Widgets\DispatchStatusWidget;
 use App\Filament\Widgets\IncidentAlertsWidget;
 use App\Filament\Widgets\IncidentClassificationChart;
 use App\Filament\Widgets\IncidentsByStatusChart;
@@ -25,6 +26,7 @@ class Dashboard extends BaseDashboard
         return [
             StatsOverview::class,
             IncidentAlertsWidget::class,
+            DispatchStatusWidget::class,
             IncidentClassificationChart::class,
             IncidentsByStatusChart::class,
             // ActiveEventsWidget::class,
