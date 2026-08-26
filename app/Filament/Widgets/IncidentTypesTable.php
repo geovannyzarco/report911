@@ -67,6 +67,6 @@ class IncidentTypesTable extends BaseWidget
                     ->weight('bold'),
             ])
             ->defaultSort('cantidad', 'desc')
-            ->paginated(false);
+            ->paginated([10, 20, 50]);
     }
 }
