@@ -3,6 +3,7 @@
 namespace App\Filament\Widgets;
 
 use Filament\Widgets\Widget;
+use Illuminate\Contracts\View\View;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 
@@ -37,7 +38,7 @@ class DispatchStatusTable extends Widget
     /**
      * Retorna la vista Blade para este widget.
      */
-    public function render()
+    public function render(): View
     {
         return view('filament.widgets.dispatch-status-table', [
             'estados' => $this->estados,
