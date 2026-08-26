@@ -26,8 +26,6 @@ class DispatchStatusTable extends BaseWidget
     {
         $hoy = Carbon::today()->format('Ymd');
 
-        // Usa el modelo Response con Eloquent Builder (requerido por Filament)
-        // Join a Incidents para filtrar por fecha y a Statuses para el nombre
         $query = Response::query()
             ->select([
                 'st.Name as Estado',
@@ -39,7 +37,8 @@ class DispatchStatusTable extends BaseWidget
                 $q->where('i.Deleted', 0)->orWhereNull('i.Deleted');
             })
             ->whereRaw("i.CreationTime >= '$hoy'")
-            ->groupBy('st.Name');
+            ->groupBy('st.Name')
+            ->orderByDesc('Cantidad');
 
         return $table
             ->query(fn () => $query)
@@ -56,16 +55,13 @@ class DispatchStatusTable extends BaseWidget
                         'Despachado' => 'info',
                         default => 'gray',
                     })
-                    ->weight('bold')
-                    ->sortable(),
+                    ->weight('bold'),
 
                 Tables\Columns\TextColumn::make('Cantidad')
                     ->label('Cantidad')
                     ->numeric()
-                    ->sortable()
                     ->weight('bold'),
             ])
-            ->defaultSort('Cantidad', 'desc')
             ->paginated(false);
     }
 }
