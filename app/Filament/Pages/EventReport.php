@@ -112,9 +112,9 @@ class EventReport extends Page implements HasForms, HasTable
         return $table
             ->query(fn () => $this->resultados)
             ->columns([
-                TextColumn::make('index')
+                TextColumn::make('row_num')
                     ->label('#')
-                    ->state(fn ($row) => $row->index ?? '-'),
+                    ->state(fn ($row) => $row->row_num ?? '-'),
 
                 TextColumn::make('Numero de Evento')
                     ->label('Evento')
@@ -230,7 +230,7 @@ class EventReport extends Page implements HasForms, HasTable
             ),
             cte_final AS (
                 SELECT
-                    ROW_NUMBER() OVER (ORDER BY le.[NUMERO_SECUENCIA]) AS index,
+                    ROW_NUMBER() OVER (ORDER BY le.[NUMERO_SECUENCIA]) AS [row_num],
                     le.[NUMERO_SECUENCIA] AS [Numero de Evento],
                     le.[TIPO_RESPUESTA] AS [Tipo de Evento],
                     COALESCE(ag_tel.Firstname + ' ' + ag_tel.Lastname, 'Desconocido') AS [Telefonista],
