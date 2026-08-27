@@ -9,6 +9,7 @@ use Filament\Forms\Concerns\InteractsWithForms;
 use Filament\Forms\Contracts\HasForms;
 use Filament\Forms\Form;
 use Filament\Pages\Page;
+use Illuminate\Contracts\View\View;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 
@@ -29,8 +30,6 @@ class EventReport extends Page implements HasForms
 
     protected static ?int $navigationSort = 1;
 
-    protected static string $view = 'filament.pages.event-report';
-
     /**
      * Icono de navegacion en el sidebar.
      */
@@ -45,6 +44,14 @@ class EventReport extends Page implements HasForms
     public static function getNavigationGroup(): ?string
     {
         return 'Reportes';
+    }
+
+    /**
+     * Retorna la vista Blade para esta pagina.
+     */
+    public function render(): View
+    {
+        return view('filament.pages.event-report');
     }
 
     /**
