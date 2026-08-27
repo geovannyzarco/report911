@@ -13,14 +13,7 @@
         </div>
     </form>
 
-    @if($busquedaEjecutada)
-        <div class="mt-6">
-            {{ $this->table }}
-        </div>
-    @else
-        <div class="text-center py-20 text-gray-500 dark:text-gray-400">
-            <p class="text-lg font-medium mb-1">Selecciona un rango de fechas</p>
-            <p class="text-sm">Usa los filtros de arriba para consultar los eventos del sistema CAD.</p>
-        </div>
-    @endif
+    <div class="mt-6">
+        <livewire:event-report-table :busqueda="$busqueda" />
+    </div>
 </x-filament-panels::page>
