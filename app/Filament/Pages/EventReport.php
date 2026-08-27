@@ -110,67 +110,53 @@ class EventReport extends Page implements HasForms, HasTable
     public function table(Table $table): Table
     {
         return $table
-            ->query(
-                DB::table('cte_resultados')
-                    ->whereRaw('1 = 1')
-            )
+            ->query(fn () => $this->resultados)
             ->columns([
                 TextColumn::make('index')
                     ->label('#')
-                    ->state(fn ($row) => $row->index ?? '-')
-                    ->sortable(),
+                    ->state(fn ($row) => $row->index ?? '-'),
 
                 TextColumn::make('Numero de Evento')
                     ->label('Evento')
                     ->weight('bold')
-                    ->searchable()
-                    ->sortable(),
+                    ->searchable(),
 
                 TextColumn::make('Tipo de Evento')
                     ->label('Tipo')
                     ->limit(25)
-                    ->tooltip(fn ($row) => $row->{'Tipo de Evento'})
-                    ->sortable(),
+                    ->tooltip(fn ($row) => $row->{'Tipo de Evento'}),
 
                 TextColumn::make('Telefonista')
                     ->limit(20)
-                    ->tooltip(fn ($row) => $row->Telefonista)
-                    ->sortable(),
+                    ->tooltip(fn ($row) => $row->Telefonista),
 
                 TextColumn::make('Despachador')
                     ->limit(20)
-                    ->tooltip(fn ($row) => $row->Despachador)
-                    ->sortable(),
+                    ->tooltip(fn ($row) => $row->Despachador),
 
                 TextColumn::make('Hora Llamada')
                     ->label('Llamada')
-                    ->time('H:i:s')
-                    ->sortable(),
+                    ->time('H:i:s'),
 
                 TextColumn::make('Hora Creacion')
                     ->label('Creacion')
-                    ->time('H:i:s')
-                    ->sortable(),
+                    ->time('H:i:s'),
 
                 TextColumn::make('Hora Despacho')
                     ->label('Despacho')
-                    ->time('H:i:s')
-                    ->sortable(),
+                    ->time('H:i:s'),
 
                 TextColumn::make('Hora En Sitio')
                     ->label('En Sitio')
-                    ->time('H:i:s')
-                    ->sortable(),
+                    ->time('H:i:s'),
 
                 TextColumn::make('Hora Terminado')
                     ->label('Terminado')
-                    ->time('H:i:s')
-                    ->sortable(),
+                    ->time('H:i:s'),
 
                 TextColumn::make('Hora Cierre')
                     ->label('Cierre')
-                    ->time('H:i:s')
-                    ->sortable(),
+                    ->time('H:i:s'),
 
                 TextColumn::make('Tiempo Total')
                     ->label('Tiempo')
