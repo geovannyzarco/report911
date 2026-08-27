@@ -2,7 +2,7 @@
     @if($busquedaEjecutada)
         <div class="mt-4 mb-4 flex flex-wrap items-center justify-between gap-4">
             <span class="text-sm text-gray-600 dark:text-gray-400">
-                Se encontraron <strong class="text-gray-900 dark:text-white">{{ number_format($this->results->total()) }}</strong> eventos
+                Se encontraron <strong class="text-gray-900 dark:text-white">{{ number_format($this->total) }}</strong> eventos
             </span>
 
             <select wire:model.live="perPage" class="fi-input w-auto rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-primary-500 focus:ring-primary-500 focus:outline-none dark:border-gray-600 dark:bg-gray-700 dark:text-white">
@@ -13,7 +13,7 @@
             </select>
         </div>
 
-        @if($this->results->count() > 0)
+        @if($this->total > 0)
             <div class="fi-ta-ctn w-full overflow-x-auto rounded-xl border border-gray-200 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-900">
                 <table class="fi-ta-table w-full text-start divide-y divide-gray-200 dark:divide-gray-700" style="table-layout: fixed; min-width: 1150px;">
                     <colgroup>
@@ -47,9 +47,10 @@
                         </tr>
                     </thead>
                     <tbody class="fi-ta-body divide-y divide-gray-200 dark:divide-gray-700">
-                        @foreach($this->results->items() as $index => $row)
+                        @foreach($this->pagedResults as $index => $row)
+                            @php $num = ($currentPage - 1) * $perPage + $index + 1; @endphp
                             <tr class="fi-ta-row bg-white transition-colors hover:bg-gray-50 dark:bg-gray-900 dark:hover:bg-gray-800/50">
-                                <td class="fi-ta-cell px-3 py-3 text-sm text-gray-500 dark:text-gray-400">{{ $this->results->firstItem() + $index }}</td>
+                                <td class="fi-ta-cell px-3 py-3 text-sm text-gray-500 dark:text-gray-400">{{ $num }}</td>
                                 <td class="fi-ta-cell px-3 py-3 text-sm font-bold text-gray-950 dark:text-white whitespace-nowrap overflow-hidden text-ellipsis">{{ $row->{'Numero de Evento'} }}</td>
                                 <td class="fi-ta-cell px-3 py-3 text-sm text-gray-600 dark:text-gray-400 whitespace-nowrap overflow-hidden text-ellipsis" title="{{ $row->{'Tipo de Evento'} }}">{{ $row->{'Tipo de Evento'} }}</td>
                                 <td class="fi-ta-cell px-3 py-3 text-sm text-gray-600 dark:text-gray-400 whitespace-nowrap overflow-hidden text-ellipsis" title="{{ $row->Telefonista }}">{{ $row->Telefonista }}</td>
@@ -67,9 +68,46 @@
                 </table>
             </div>
 
-            <div class="mt-4">
-                {{ $this->results->links() }}
-            </div>
+            @if($this->totalPages > 1)
+                <div class="mt-4 flex items-center justify-between">
+                    <span class="text-sm text-gray-500 dark:text-gray-400">
+                        Pagina {{ $currentPage }} de {{ $this->totalPages }}
+                    </span>
+
+                    <div class="flex items-center gap-1">
+                        <button type="button" wire:click="goToPage(1)" @disabled($currentPage === 1)
+                            class="fi-btn fi-btn-size-sm inline-flex items-center justify-center gap-1 rounded-lg bg-white px-3 py-2 text-sm font-semibold text-gray-700 shadow-sm ring-1 ring-gray-300 transition disabled:opacity-50 dark:bg-gray-800 dark:text-gray-200 dark:ring-gray-600">
+                            &laquo;
+                        </button>
+                        <button type="button" wire:click="previousPage" @disabled($currentPage === 1)
+                            class="fi-btn fi-btn-size-sm inline-flex items-center justify-center gap-1 rounded-lg bg-white px-3 py-2 text-sm font-semibold text-gray-700 shadow-sm ring-1 ring-gray-300 transition disabled:opacity-50 dark:bg-gray-800 dark:text-gray-200 dark:ring-gray-600">
+                            &lsaquo;
+                        </button>
+
+                        @php
+                            $inicio = max(1, $currentPage - 2);
+                            $fin = min($this->totalPages, $currentPage + 2);
+                        @endphp
+
+                        @for($i = $inicio; $i <= $fin; $i++)
+                            <button type="button" wire:click="goToPage({{ $i }})"
+                                class="fi-btn fi-btn-size-sm inline-flex items-center justify-center gap-1 rounded-lg px-3 py-2 text-sm font-semibold transition
+                                    {{ $i === $currentPage ? 'bg-primary-600 text-white shadow-sm' : 'bg-white text-gray-700 shadow-sm ring-1 ring-gray-300 dark:bg-gray-800 dark:text-gray-200 dark:ring-gray-600' }}">
+                                {{ $i }}
+                            </button>
+                        @endfor
+
+                        <button type="button" wire:click="nextPage" @disabled($currentPage === $this->totalPages)
+                            class="fi-btn fi-btn-size-sm inline-flex items-center justify-center gap-1 rounded-lg bg-white px-3 py-2 text-sm font-semibold text-gray-700 shadow-sm ring-1 ring-gray-300 transition disabled:opacity-50 dark:bg-gray-800 dark:text-gray-200 dark:ring-gray-600">
+                            &rsaquo;
+                        </button>
+                        <button type="button" wire:click="goToPage({{ $this->totalPages }})" @disabled($currentPage === $this->totalPages)
+                            class="fi-btn fi-btn-size-sm inline-flex items-center justify-center gap-1 rounded-lg bg-white px-3 py-2 text-sm font-semibold text-gray-700 shadow-sm ring-1 ring-gray-300 transition disabled:opacity-50 dark:bg-gray-800 dark:text-gray-200 dark:ring-gray-600">
+                            &raquo;
+                        </button>
+                    </div>
+                </div>
+            @endif
         @else
             <div class="text-center py-12 text-gray-500 dark:text-gray-400">
                 <p>No se encontraron eventos.</p>

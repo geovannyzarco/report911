@@ -2,19 +2,15 @@
 
 namespace App\Livewire;
 
-use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\DB;
 use Livewire\Component;
-use Livewire\WithPagination;
 
 /**
  * Livewire Component: EventReportTable
- * Tabla de eventos del CAD con paginacion nativa de Livewire.
+ * Tabla de eventos del CAD con paginacion manual.
  */
 class EventReportTable extends Component
 {
-    use WithPagination;
-
     public string $fechaDesde = '';
 
     public string $fechaHasta = '';
@@ -22,6 +18,8 @@ class EventReportTable extends Component
     public string $busqueda = '';
 
     public int $perPage = 25;
+
+    public int $currentPage = 1;
 
     public bool $busquedaEjecutada = false;
 
@@ -32,13 +30,33 @@ class EventReportTable extends Component
         $this->fechaDesde = $desde;
         $this->fechaHasta = $hasta;
         $this->busquedaEjecutada = true;
-        $this->resetPage();
+        $this->currentPage = 1;
     }
 
-    public function getResultsProperty(): LengthAwarePaginator
+    public function goToPage(int $page): void
+    {
+        $this->currentPage = max(1, $page);
+    }
+
+    public function previousPage(): void
+    {
+        $this->currentPage = max(1, $this->currentPage - 1);
+    }
+
+    public function nextPage(): void
+    {
+        $this->currentPage++;
+    }
+
+    public function updatingPerPage(): void
+    {
+        $this->currentPage = 1;
+    }
+
+    public function getResultsProperty(): array
     {
         if (! $this->busquedaEjecutada) {
-            return new LengthAwarePaginator([], 0, $this->perPage);
+            return [];
         }
 
         $desde = $this->fechaDesde;
@@ -105,24 +123,25 @@ class EventReportTable extends Component
             });
         }
 
-        $allResults = array_values($allResults);
-
-        $total = count($allResults);
-        $start = ($this->page - 1) * $this->perPage;
-        $paginatedResults = array_slice($allResults, $start, $this->perPage);
-
-        return new LengthAwarePaginator(
-            $paginatedResults,
-            $total,
-            $this->perPage,
-            $this->page,
-            ['path' => request()->url()]
-        );
+        return array_values($allResults);
     }
 
-    public function updatingPerPage(): void
+    public function getPagedResultsProperty(): array
     {
-        $this->resetPage();
+        $all = $this->results;
+        $start = ($this->currentPage - 1) * $this->perPage;
+
+        return array_slice($all, $start, $this->perPage);
+    }
+
+    public function getTotalProperty(): int
+    {
+        return count($this->results);
+    }
+
+    public function getTotalPagesProperty(): int
+    {
+        return max(1, (int) ceil($this->total / $this->perPage));
     }
 
     public function render()
