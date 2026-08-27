@@ -43,7 +43,7 @@
 
             @if(count($this->getResultadosFiltrados()) > 0)
                 <div class="fi-ta-ctn w-full overflow-x-auto rounded-xl border border-gray-200 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-900" style="max-height: 600px; overflow-y: auto;">
-                    <table class="fi-ta-table w-full text-start divide-y divide-gray-200 dark:divide-gray-700" style="table-layout: fixed;">
+                    <table class="fi-ta-table text-start divide-y divide-gray-200 dark:divide-gray-700" style="table-layout: fixed; min-width: 1150px;">
                         <colgroup>
                             <col style="width: 40px;">
                             <col style="width: 170px;">
