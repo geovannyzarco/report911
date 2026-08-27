@@ -29,9 +29,9 @@ class IncidentTypesTable extends BaseWidget
     {
         $hoy = Carbon::today()->format('Ymd');
 
-        // Consulta: tipos de incidente no cerrados hoy agrupados por ResponseType
+        // Consulta: top 5 tipos de incidente no cerrados hoy
         $resultados = DB::connection('sqlsrv_cad')->select("
-            SELECT TOP 20 rt.Name as TipoIncidente, COUNT(DISTINCT i.OID) as Cantidad
+            SELECT TOP 5 rt.Name as TipoIncidente, COUNT(DISTINCT i.OID) as Cantidad
             FROM Incidents i WITH (NOLOCK)
             INNER JOIN Responses r WITH (NOLOCK) ON r.Incident = i.OID
             INNER JOIN ResponseTypes rt WITH (NOLOCK) ON r.ResponseType = rt.OID
@@ -67,6 +67,6 @@ class IncidentTypesTable extends BaseWidget
                     ->weight('bold'),
             ])
             ->defaultSort('cantidad', 'desc')
-            ->paginated([10, 20, 50]);
+            ->paginated(false);
     }
 }
