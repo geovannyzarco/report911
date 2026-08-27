@@ -9,6 +9,10 @@ use Filament\Forms\Contracts\HasForms;
 use Filament\Pages\Page;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
+use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Concerns\InteractsWithTable;
+use Filament\Tables\Contracts\HasTable;
+use Filament\Tables\Table;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 
@@ -16,12 +20,12 @@ use Illuminate\Support\Facades\DB;
  * Page: EventReport
  * Nombre: Reporte de Eventos
  * Descripcion: Pagina personalizada que muestra un reporte detallado de eventos
- * del sistema CAD. Incluye filtros de fecha/hora y busqueda por numero de evento.
- * La tabla inicia vacia y solo carga datos cuando el usuario selecciona un rango de fechas.
+ * del sistema CAD con tabla nativa de Filament.
  */
-class EventReport extends Page implements HasForms
+class EventReport extends Page implements HasForms, HasTable
 {
     use InteractsWithForms;
+    use InteractsWithTable;
 
     protected string $view = 'filament.pages.event-report';
 
@@ -31,17 +35,11 @@ class EventReport extends Page implements HasForms
 
     protected static ?int $navigationSort = 1;
 
-    /**
-     * Icono de navegacion en el sidebar.
-     */
     public static function getNavigationIcon(): ?string
     {
         return 'heroicon-m-document-text';
     }
 
-    /**
-     * Grupo de navegacion en el sidebar.
-     */
     public static function getNavigationGroup(): ?string
     {
         return 'Reportes';
@@ -58,19 +56,14 @@ class EventReport extends Page implements HasForms
     public ?string $fechaHasta = null;
 
     /**
-     * Resultados de la consulta.
-     */
-    public array $resultados = [];
-
-    /**
-     * Total de registros encontrados.
-     */
-    public int $totalRegistros = 0;
-
-    /**
      * Termino de busqueda por numero de evento.
      */
     public string $busqueda = '';
+
+    /**
+     * Resultados crudos de la consulta SQL.
+     */
+    public array $resultados = [];
 
     /**
      * Indica si se ha ejecutado una busqueda.
@@ -109,6 +102,88 @@ class EventReport extends Page implements HasForms
                     ])
                     ->columns(3),
             ]);
+    }
+
+    /**
+     * Configuracion de la tabla nativa de Filament.
+     */
+    public function table(Table $table): Table
+    {
+        return $table
+            ->query(
+                DB::table('cte_resultados')
+                    ->whereRaw('1 = 1')
+            )
+            ->columns([
+                TextColumn::make('index')
+                    ->label('#')
+                    ->state(fn ($row) => $row->index ?? '-')
+                    ->sortable(),
+
+                TextColumn::make('Numero de Evento')
+                    ->label('Evento')
+                    ->weight('bold')
+                    ->searchable()
+                    ->sortable(),
+
+                TextColumn::make('Tipo de Evento')
+                    ->label('Tipo')
+                    ->limit(25)
+                    ->tooltip(fn ($row) => $row->{'Tipo de Evento'})
+                    ->sortable(),
+
+                TextColumn::make('Telefonista')
+                    ->limit(20)
+                    ->tooltip(fn ($row) => $row->Telefonista)
+                    ->sortable(),
+
+                TextColumn::make('Despachador')
+                    ->limit(20)
+                    ->tooltip(fn ($row) => $row->Despachador)
+                    ->sortable(),
+
+                TextColumn::make('Hora Llamada')
+                    ->label('Llamada')
+                    ->time('H:i:s')
+                    ->sortable(),
+
+                TextColumn::make('Hora Creacion')
+                    ->label('Creacion')
+                    ->time('H:i:s')
+                    ->sortable(),
+
+                TextColumn::make('Hora Despacho')
+                    ->label('Despacho')
+                    ->time('H:i:s')
+                    ->sortable(),
+
+                TextColumn::make('Hora En Sitio')
+                    ->label('En Sitio')
+                    ->time('H:i:s')
+                    ->sortable(),
+
+                TextColumn::make('Hora Terminado')
+                    ->label('Terminado')
+                    ->time('H:i:s')
+                    ->sortable(),
+
+                TextColumn::make('Hora Cierre')
+                    ->label('Cierre')
+                    ->time('H:i:s')
+                    ->sortable(),
+
+                TextColumn::make('Tiempo Total')
+                    ->label('Tiempo')
+                    ->weight('bold')
+                    ->sortable(),
+            ])
+            ->defaultSort('Numero de Evento')
+            ->paginated([10, 25, 50, 100])
+            ->defaultPaginationPageOption(25)
+            ->searchable(false)
+            ->filters([])
+            ->recordActions([])
+            ->toolbarActions([]);
     }
 
     /**
@@ -166,50 +241,50 @@ class EventReport extends Page implements HasForms
                 INNER JOIN AssignModif am WITH (NOLOCK) ON am.Response = a.ResponseOID
                 INNER JOIN Statuses c WITH (NOLOCK) ON c.OID = am.ResourceStatus
                 GROUP BY a.ResponseOID
+            ),
+            cte_final AS (
+                SELECT
+                    ROW_NUMBER() OVER (ORDER BY le.[NUMERO_SECUENCIA]) AS index,
+                    le.[NUMERO_SECUENCIA] AS [Numero de Evento],
+                    le.[TIPO_RESPUESTA] AS [Tipo de Evento],
+                    COALESCE(ag_tel.Firstname + ' ' + ag_tel.Lastname, 'Desconocido') AS [Telefonista],
+                    COALESCE(ag_dsp.Firstname + ' ' + ag_dsp.Lastname, 'Desconocido') AS [Despachador],
+                    CAST(le.[HORA_LLAMADA_calls] AS TIME(0)) AS [Hora Llamada],
+                    CAST(le.[FECHA_CREACION_EVENTO_responses] AS TIME(0)) AS [Hora Creacion],
+                    CAST(tf.[Despachado] AS TIME(0)) AS [Hora Despacho],
+                    CAST(tf.[En Sitio] AS TIME(0)) AS [Hora En Sitio],
+                    CAST(tf.[Terminado] AS TIME(0)) AS [Hora Terminado],
+                    CAST(le.HoraCierre AS TIME(0)) AS [Hora Cierre],
+                    CONVERT(VARCHAR(8),
+                        DATEADD(SECOND,
+                            CASE
+                                WHEN le.HoraCierre >= le.[FECHA_CREACION_EVENTO_responses]
+                                THEN DATEDIFF(SECOND, le.[FECHA_CREACION_EVENTO_responses], le.HoraCierre)
+                                ELSE 0
+                            END,
+                        0),
+                    108) AS [Tiempo Total]
+                FROM cte_LlamadaEvento le
+                LEFT JOIN cte_tiempos_fases tf ON le.ResponseOID = tf.ResponseOID
+                LEFT JOIN Agents ag_tel WITH (NOLOCK) ON le.IncidentAgentOID = ag_tel.OID
+                LEFT JOIN Agents ag_dsp WITH (NOLOCK) ON tf.DespachadorAgentOID = ag_dsp.OID
             )
-            SELECT
-                le.[NUMERO_SECUENCIA] AS [Numero de Evento],
-                le.[TIPO_RESPUESTA] AS [Tipo de Evento],
-                COALESCE(ag_tel.Firstname + ' ' + ag_tel.Lastname, 'Desconocido') AS [Telefonista],
-                COALESCE(ag_dsp.Firstname + ' ' + ag_dsp.Lastname, 'Desconocido') AS [Despachador],
-                CAST(le.[HORA_LLAMADA_calls] AS TIME(0)) AS [Hora Llamada],
-                CAST(le.[FECHA_CREACION_EVENTO_responses] AS TIME(0)) AS [Hora Creacion],
-                CAST(tf.[Despachado] AS TIME(0)) AS [Hora Despacho],
-                CAST(tf.[En Sitio] AS TIME(0)) AS [Hora En Sitio],
-                CAST(tf.[Terminado] AS TIME(0)) AS [Hora Terminado],
-                CAST(le.HoraCierre AS TIME(0)) AS [Hora Cierre],
-                CONVERT(VARCHAR(8),
-                    DATEADD(SECOND,
-                        CASE
-                            WHEN le.HoraCierre >= le.[FECHA_CREACION_EVENTO_responses]
-                            THEN DATEDIFF(SECOND, le.[FECHA_CREACION_EVENTO_responses], le.HoraCierre)
-                            ELSE 0
-                        END,
-                    0),
-                108) AS [Tiempo Total]
-            FROM cte_LlamadaEvento le
-            LEFT JOIN cte_tiempos_fases tf ON le.ResponseOID = tf.ResponseOID
-            LEFT JOIN Agents ag_tel WITH (NOLOCK) ON le.IncidentAgentOID = ag_tel.OID
-            LEFT JOIN Agents ag_dsp WITH (NOLOCK) ON tf.DespachadorAgentOID = ag_dsp.OID
-            ORDER BY le.[NUMERO_SECUENCIA]
+            SELECT * FROM cte_final
+            WHERE ([Numero de Evento] LIKE '%$this->busqueda%' OR '$this->busqueda' = '')
+            ORDER BY [Numero de Evento]
         ";
 
         $this->resultados = DB::connection('sqlsrv_cad')->select($query);
-        $this->totalRegistros = count($this->resultados);
         $this->busquedaEjecutada = true;
+
+        $this->resetTablePage();
     }
 
     /**
-     * Obtiene los resultados filtrados por busqueda de numero de evento.
+     * Resetea la busqueda al cambiar el termino.
      */
-    public function getResultadosFiltrados(): array
+    public function updatedBusqueda(): void
     {
-        if (empty($this->busqueda)) {
-            return $this->resultados;
-        }
-
-        return array_filter($this->resultados, function ($row) {
-            return str_contains($row->{'Numero de Evento'}, $this->busqueda);
-        });
+        $this->resetTablePage();
     }
 }
