@@ -17,7 +17,7 @@
         <div class="mt-6">
             <div class="mb-4">
                 <span class="text-sm text-gray-600 dark:text-gray-400">
-                    Se encontraron <strong class="text-gray-900 dark:text-white">{{ number_format(count($this->tableRecords)) }}</strong> eventos
+                    Se encontraron <strong class="text-gray-900 dark:text-white">{{ number_format(count($this->table->getResults())) }}</strong> eventos
                     del <strong class="text-gray-900 dark:text-white">{{ \Carbon\Carbon::parse($fechaDesde)->format('d/m/Y') }}</strong>
                     al <strong class="text-gray-900 dark:text-white">{{ \Carbon\Carbon::parse($fechaHasta)->format('d/m/Y') }}</strong>
                 </span>
