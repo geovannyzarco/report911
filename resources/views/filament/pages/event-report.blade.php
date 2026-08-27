@@ -40,59 +40,61 @@
 
             {{-- Tabla de resultados --}}
             @if(count($this->getResultadosFiltrados()) > 0)
-                <div class="overflow-x-auto rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm">
-                    <table class="w-full text-sm">
-                        <thead>
-                            <tr class="border-b border-gray-200 bg-gray-50 dark:border-gray-700 dark:bg-gray-800">
-                                <th class="px-3 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 w-10">#</th>
-                                <th class="px-3 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 w-40">Evento</th>
-                                <th class="px-3 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 w-44">Tipo</th>
-                                <th class="px-3 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 w-36">Telefonista</th>
-                                <th class="px-3 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 w-36">Despachador</th>
-                                <th class="px-3 py-3 text-center text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 w-20">Llamada</th>
-                                <th class="px-3 py-3 text-center text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 w-20">Creacion</th>
-                                <th class="px-3 py-3 text-center text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 w-20">Despacho</th>
-                                <th class="px-3 py-3 text-center text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 w-20">En Sitio</th>
-                                <th class="px-3 py-3 text-center text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 w-20">Terminado</th>
-                                <th class="px-3 py-3 text-center text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 w-20">Cierre</th>
-                                <th class="px-3 py-3 text-center text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 w-20">Tiempo</th>
+                <div class="fi-ta-ctn inline-block w-full overflow-x-auto rounded-xl border border-gray-200 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-900">
+                    <table class="fi-ta-table w-full text-start divide-y divide-gray-200 dark:divide-gray-700">
+                        <thead class="fi-ta-header">
+                            <tr class="fi-ta-header-row">
+                                <x-filament-tables::header-cell index="index">#</x-filament-tables::header-cell>
+                                <x-filament-tables::header-cell index="evento">Evento</x-filament-tables::header-cell>
+                                <x-filament-tables::header-cell index="tipo">Tipo</x-filament-tables::header-cell>
+                                <x-filament-tables::header-cell index="telefonista">Telefonista</x-filament-tables::header-cell>
+                                <x-filament-tables::header-cell index="despachador">Despachador</x-filament-tables::header-cell>
+                                <x-filament-tables::header-cell index="llamada" class="text-center">Llamada</x-filament-tables::header-cell>
+                                <x-filament-tables::header-cell index="creacion" class="text-center">Creacion</x-filament-tables::header-cell>
+                                <x-filament-tables::header-cell index="despacho" class="text-center">Despacho</x-filament-tables::header-cell>
+                                <x-filament-tables::header-cell index="ensitio" class="text-center">En Sitio</x-filament-tables::header-cell>
+                                <x-filament-tables::header-cell index="terminado" class="text-center">Terminado</x-filament-tables::header-cell>
+                                <x-filament-tables::header-cell index="cierre" class="text-center">Cierre</x-filament-tables::header-cell>
+                                <x-filament-tables::header-cell index="tiempo" class="text-center">Tiempo</x-filament-tables::header-cell>
                             </tr>
                         </thead>
-                        <tbody class="divide-y divide-gray-100 dark:divide-gray-700">
+                        <tbody class="fi-ta-body divide-y divide-gray-200 dark:divide-gray-700">
                             @foreach($this->getResultadosFiltrados() as $index => $row)
-                                <tr class="bg-white transition-colors hover:bg-gray-50 dark:bg-gray-900 dark:hover:bg-gray-800">
-                                    <td class="px-3 py-3 text-gray-400 dark:text-gray-500">{{ $index + 1 }}</td>
-                                    <td class="px-3 py-3 font-mono text-xs font-bold text-gray-900 dark:text-white whitespace-nowrap">
+                                <tr class="fi-ta-row transition-colors hover:bg-gray-50 dark:hover:bg-gray-800/50">
+                                    <td class="fi-ta-cell px-3 py-3 text-sm text-gray-500 dark:text-gray-400">
+                                        {{ $index + 1 }}
+                                    </td>
+                                    <td class="fi-ta-cell px-3 py-3 text-sm font-bold text-gray-950 dark:text-white">
                                         {{ $row->{'Numero de Evento'} }}
                                     </td>
-                                    <td class="px-3 py-3 text-gray-700 dark:text-gray-300 text-xs leading-tight">
+                                    <td class="fi-ta-cell px-3 py-3 text-sm text-gray-600 dark:text-gray-400">
                                         {{ $row->{'Tipo de Evento'} }}
                                     </td>
-                                    <td class="px-3 py-3 text-gray-700 dark:text-gray-300 text-xs">
+                                    <td class="fi-ta-cell px-3 py-3 text-sm text-gray-600 dark:text-gray-400">
                                         {{ $row->Telefonista }}
                                     </td>
-                                    <td class="px-3 py-3 text-gray-700 dark:text-gray-300 text-xs">
+                                    <td class="fi-ta-cell px-3 py-3 text-sm text-gray-600 dark:text-gray-400">
                                         {{ $row->Despachador }}
                                     </td>
-                                    <td class="px-3 py-3 text-center font-mono text-xs text-gray-600 dark:text-gray-400 whitespace-nowrap">
+                                    <td class="fi-ta-cell px-3 py-3 text-center text-sm text-gray-600 dark:text-gray-400">
                                         {{ $row->{'Hora Llamada'} ?? '-' }}
                                     </td>
-                                    <td class="px-3 py-3 text-center font-mono text-xs text-gray-600 dark:text-gray-400 whitespace-nowrap">
+                                    <td class="fi-ta-cell px-3 py-3 text-center text-sm text-gray-600 dark:text-gray-400">
                                         {{ $row->{'Hora Creacion'} ?? '-' }}
                                     </td>
-                                    <td class="px-3 py-3 text-center font-mono text-xs text-gray-600 dark:text-gray-400 whitespace-nowrap">
+                                    <td class="fi-ta-cell px-3 py-3 text-center text-sm text-gray-600 dark:text-gray-400">
                                         {{ $row->{'Hora Despacho'} ?? '-' }}
                                     </td>
-                                    <td class="px-3 py-3 text-center font-mono text-xs text-gray-600 dark:text-gray-400 whitespace-nowrap">
+                                    <td class="fi-ta-cell px-3 py-3 text-center text-sm text-gray-600 dark:text-gray-400">
                                         {{ $row->{'Hora En Sitio'} ?? '-' }}
                                     </td>
-                                    <td class="px-3 py-3 text-center font-mono text-xs text-gray-600 dark:text-gray-400 whitespace-nowrap">
+                                    <td class="fi-ta-cell px-3 py-3 text-center text-sm text-gray-600 dark:text-gray-400">
                                         {{ $row->{'Hora Terminado'} ?? '-' }}
                                     </td>
-                                    <td class="px-3 py-3 text-center font-mono text-xs text-gray-600 dark:text-gray-400 whitespace-nowrap">
+                                    <td class="fi-ta-cell px-3 py-3 text-center text-sm text-gray-600 dark:text-gray-400">
                                         {{ $row->{'Hora Cierre'} ?? '-' }}
                                     </td>
-                                    <td class="px-3 py-3 text-center font-mono text-xs font-bold text-gray-900 dark:text-white whitespace-nowrap">
+                                    <td class="fi-ta-cell px-3 py-3 text-center text-sm font-bold text-gray-950 dark:text-white">
                                         {{ $row->{'Tiempo Total'} ?? '-' }}
                                     </td>
                                 </tr>
