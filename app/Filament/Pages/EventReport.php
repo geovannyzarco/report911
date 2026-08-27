@@ -5,6 +5,8 @@ namespace App\Filament\Pages;
 use Filament\Forms;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Section;
+use Filament\Forms\Concerns\InteractsWithForms;
+use Filament\Forms\Contracts\HasForms;
 use Filament\Forms\Form;
 use Filament\Pages\Page;
 use Illuminate\Support\Carbon;
@@ -17,8 +19,10 @@ use Illuminate\Support\Facades\DB;
  * del sistema CAD. Incluye filtros de fecha/hora y busqueda por numero de evento.
  * La tabla inicia vacia y solo carga datos cuando el usuario selecciona un rango de fechas.
  */
-class EventReport extends Page
+class EventReport extends Page implements HasForms
 {
+    use InteractsWithForms;
+
     protected static ?string $title = 'Reporte de Eventos';
 
     protected static ?string $navigationLabel = 'Reporte de Eventos';
@@ -108,7 +112,6 @@ class EventReport extends Page
         $desde = Carbon::parse($this->fechaDesde)->startOfDay()->format('Ymd H:i:s');
         $hasta = Carbon::parse($this->fechaHasta)->endOfDay()->format('Ymd H:i:s');
 
-        // Consulta principal con CTEs (Common Table Expressions)
         $query = "
             WITH cte_Calls AS (
                 SELECT
