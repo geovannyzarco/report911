@@ -9,17 +9,22 @@ use Filament\Forms\Contracts\HasForms;
 use Filament\Pages\Page;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
+use Filament\Tables;
+use Filament\Tables\Concerns\InteractsWithTable;
+use Filament\Tables\Contracts\HasTable;
+use Filament\Tables\Table;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 
 /**
  * Page: EventReport
  * Nombre: Reporte de Eventos
- * Descripcion: Pagina personalizada que muestra un reporte detallado de eventos del sistema CAD.
+ * Descripcion: Pagina personalizada con tabla nativa de Filament para eventos del CAD.
  */
-class EventReport extends Page implements HasForms
+class EventReport extends Page implements HasForms, HasTable
 {
     use InteractsWithForms;
+    use InteractsWithTable;
 
     protected string $view = 'filament.pages.event-report';
 
@@ -49,10 +54,6 @@ class EventReport extends Page implements HasForms
 
     public bool $busquedaEjecutada = false;
 
-    public int $paginaActual = 1;
-
-    public int $porPagina = 25;
-
     public function form(Schema $form): Schema
     {
         return $form
@@ -80,6 +81,99 @@ class EventReport extends Page implements HasForms
                     ])
                     ->columns(3),
             ]);
+    }
+
+    public function table(Table $table): Table
+    {
+        $records = [];
+
+        if ($this->busquedaEjecutada) {
+            $records = array_values(array_filter($this->resultados, function ($row) {
+                if (empty($this->busqueda)) {
+                    return true;
+                }
+
+                return str_contains($row->{'Numero de Evento'}, $this->busqueda);
+            }));
+
+            $records = array_map(function ($index, $row) {
+                return [
+                    'id' => $index + 1,
+                    'numero_evento' => $row->{'Numero de Evento'},
+                    'tipo_evento' => $row->{'Tipo de Evento'},
+                    'telefonista' => $row->Telefonista,
+                    'despachador' => $row->Despachador,
+                    'hora_llamada' => $row->{'Hora Llamada'} ?? '-',
+                    'hora_creacion' => $row->{'Hora Creacion'} ?? '-',
+                    'hora_despacho' => $row->{'Hora Despacho'} ?? '-',
+                    'hora_en_sitio' => $row->{'Hora En Sitio'} ?? '-',
+                    'hora_terminado' => $row->{'Hora Terminado'} ?? '-',
+                    'hora_cierre' => $row->{'Hora Cierre'} ?? '-',
+                    'tiempo_total' => $row->{'Tiempo Total'} ?? '-',
+                ];
+            }, array_keys($records), $records);
+        }
+
+        return $table
+            ->records(fn () => $records)
+            ->columns([
+                Tables\Columns\TextColumn::make('id')
+                    ->label('#')
+                    ->sortable(),
+
+                Tables\Columns\TextColumn::make('numero_evento')
+                    ->label('Evento')
+                    ->weight('bold')
+                    ->searchable()
+                    ->limit(25),
+
+                Tables\Columns\TextColumn::make('tipo_evento')
+                    ->label('Tipo')
+                    ->limit(25)
+                    ->tooltip(fn ($record) => $record['tipo_evento']),
+
+                Tables\Columns\TextColumn::make('telefonista')
+                    ->limit(20)
+                    ->tooltip(fn ($record) => $record['telefonista']),
+
+                Tables\Columns\TextColumn::make('despachador')
+                    ->limit(20)
+                    ->tooltip(fn ($record) => $record['despachador']),
+
+                Tables\Columns\TextColumn::make('hora_llamada')
+                    ->label('Llamada')
+                    ->sortable(),
+
+                Tables\Columns\TextColumn::make('hora_creacion')
+                    ->label('Creacion')
+                    ->sortable(),
+
+                Tables\Columns\TextColumn::make('hora_despacho')
+                    ->label('Despacho')
+                    ->sortable(),
+
+                Tables\Columns\TextColumn::make('hora_en_sitio')
+                    ->label('En Sitio')
+                    ->sortable(),
+
+                Tables\Columns\TextColumn::make('hora_terminado')
+                    ->label('Terminado')
+                    ->sortable(),
+
+                Tables\Columns\TextColumn::make('hora_cierre')
+                    ->label('Cierre')
+                    ->sortable(),
+
+                Tables\Columns\TextColumn::make('tiempo_total')
+                    ->label('Tiempo')
+                    ->weight('bold'),
+            ])
+            ->paginated([10, 25, 50, 100])
+            ->defaultPaginationPageOption(25)
+            ->searchable(false)
+            ->filters([])
+            ->recordActions([])
+            ->toolbarActions([]);
     }
 
     public function buscar(): void
@@ -125,7 +219,6 @@ class EventReport extends Page implements HasForms
                 GROUP BY a.ResponseOID
             )
             SELECT
-                ROW_NUMBER() OVER (ORDER BY le.[NUMERO_SECUENCIA]) AS [row_num],
                 le.[NUMERO_SECUENCIA] AS [Numero de Evento],
                 le.[TIPO_RESPUESTA] AS [Tipo de Evento],
                 COALESCE(ag_tel.Firstname + ' ' + ag_tel.Lastname, 'Desconocido') AS [Telefonista],
@@ -148,50 +241,10 @@ class EventReport extends Page implements HasForms
 
         $this->resultados = DB::connection('sqlsrv_cad')->select($query);
         $this->busquedaEjecutada = true;
-        $this->paginaActual = 1;
-    }
-
-    public function getFilteredResults(): array
-    {
-        if (empty($this->busqueda)) {
-            return $this->resultados;
-        }
-
-        return array_values(array_filter($this->resultados, function ($row) {
-            return str_contains($row->{'Numero de Evento'}, $this->busqueda);
-        }));
-    }
-
-    public function getPagedResults(): array
-    {
-        $filtered = $this->getFilteredResults();
-        $start = ($this->paginaActual - 1) * $this->porPagina;
-
-        return array_slice($filtered, $start, $this->porPagina);
-    }
-
-    public function getTotalPages(): int
-    {
-        return (int) ceil(count($this->getFilteredResults()) / $this->porPagina);
-    }
-
-    public function goToPage(int $page): void
-    {
-        $this->paginaActual = max(1, min($page, $this->getTotalPages()));
-    }
-
-    public function previousPage(): void
-    {
-        $this->goToPage($this->paginaActual - 1);
-    }
-
-    public function nextPage(): void
-    {
-        $this->goToPage($this->paginaActual + 1);
     }
 
     public function updatedBusqueda(): void
     {
-        $this->paginaActual = 1;
+        // Table refreshes automatically
     }
 }
