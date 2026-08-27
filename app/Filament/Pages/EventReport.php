@@ -179,12 +179,19 @@ class EventReport extends Page implements HasForms, HasTable
     public function buscar(): void
     {
         $this->validate([
-            'fechaDesde' => 'required|date',
-            'fechaHasta' => 'required|date|after_or_equal:fechaDesde',
+            'fechaDesde' => 'required',
+            'fechaHasta' => 'required',
         ]);
 
         $desde = Carbon::parse($this->fechaDesde)->format('Ymd H:i:s');
         $hasta = Carbon::parse($this->fechaHasta)->format('Ymd H:i:s');
+
+        logger('EventReport buscar', [
+            'fechaDesde_raw' => $this->fechaDesde,
+            'fechaHasta_raw' => $this->fechaHasta,
+            'desde_formatted' => $desde,
+            'hasta_formatted' => $hasta,
+        ]);
 
         $query = "
             WITH cte_Calls AS (
