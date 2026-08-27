@@ -262,8 +262,6 @@ class EventReport extends Page implements HasForms, HasTable
 
         $this->resultados = DB::connection('sqlsrv_cad')->select($query);
         $this->busquedaEjecutada = true;
-
-        $this->resetTablePage();
     }
 
     /**
@@ -271,6 +269,6 @@ class EventReport extends Page implements HasForms, HasTable
      */
     public function updatedBusqueda(): void
     {
-        $this->resetTablePage();
+        // Reset table page handled by Filament
     }
 }
