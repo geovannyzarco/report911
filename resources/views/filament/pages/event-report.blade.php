@@ -21,8 +21,8 @@
             <div class="mb-4">
                 <span class="text-sm text-gray-600 dark:text-gray-400">
                     Se encontraron <strong class="text-gray-900 dark:text-white">{{ number_format($totalRegistros) }}</strong> eventos
-                    del <strong class="text-gray-900 dark:text-white">{{ $fechaDesde }}</strong>
-                    al <strong class="text-gray-900 dark:text-white">{{ $fechaHasta }}</strong>
+                    del <strong class="text-gray-900 dark:text-white">{{ \Carbon\Carbon::parse($fechaDesde)->format('d/m/Y') }}</strong>
+                    al <strong class="text-gray-900 dark:text-white">{{ \Carbon\Carbon::parse($fechaHasta)->format('d/m/Y') }}</strong>
                 </span>
             </div>
 
@@ -40,59 +40,59 @@
 
             {{-- Tabla de resultados --}}
             @if(count($this->getResultadosFiltrados()) > 0)
-                <div class="overflow-x-auto rounded-xl border border-gray-200 dark:border-gray-700">
-                    <table class="w-full text-sm text-left">
-                        <thead class="text-xs text-gray-700 uppercase bg-gray-50 dark:bg-gray-700 dark:text-gray-400">
-                            <tr>
-                                <th class="px-4 py-3">#</th>
-                                <th class="px-4 py-3">Evento</th>
-                                <th class="px-4 py-3">Tipo</th>
-                                <th class="px-4 py-3">Telefonista</th>
-                                <th class="px-4 py-3">Despachador</th>
-                                <th class="px-4 py-3 text-center">Llamada</th>
-                                <th class="px-4 py-3 text-center">Creacion</th>
-                                <th class="px-4 py-3 text-center">Despacho</th>
-                                <th class="px-4 py-3 text-center">En Sitio</th>
-                                <th class="px-4 py-3 text-center">Terminado</th>
-                                <th class="px-4 py-3 text-center">Cierre</th>
-                                <th class="px-4 py-3 text-center">Tiempo</th>
+                <div class="overflow-x-auto rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm">
+                    <table class="w-full text-sm">
+                        <thead>
+                            <tr class="border-b border-gray-200 bg-gray-50 dark:border-gray-700 dark:bg-gray-800">
+                                <th class="px-3 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 w-10">#</th>
+                                <th class="px-3 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 w-40">Evento</th>
+                                <th class="px-3 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 w-44">Tipo</th>
+                                <th class="px-3 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 w-36">Telefonista</th>
+                                <th class="px-3 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 w-36">Despachador</th>
+                                <th class="px-3 py-3 text-center text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 w-20">Llamada</th>
+                                <th class="px-3 py-3 text-center text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 w-20">Creacion</th>
+                                <th class="px-3 py-3 text-center text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 w-20">Despacho</th>
+                                <th class="px-3 py-3 text-center text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 w-20">En Sitio</th>
+                                <th class="px-3 py-3 text-center text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 w-20">Terminado</th>
+                                <th class="px-3 py-3 text-center text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 w-20">Cierre</th>
+                                <th class="px-3 py-3 text-center text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 w-20">Tiempo</th>
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-gray-100 dark:divide-gray-700">
                             @foreach($this->getResultadosFiltrados() as $index => $row)
-                                <tr class="bg-white hover:bg-gray-50 dark:bg-gray-800 dark:hover:bg-gray-700">
-                                    <td class="px-4 py-3 text-gray-500">{{ $index + 1 }}</td>
-                                    <td class="px-4 py-3 font-bold text-gray-900 dark:text-white">
+                                <tr class="bg-white transition-colors hover:bg-gray-50 dark:bg-gray-900 dark:hover:bg-gray-800">
+                                    <td class="px-3 py-3 text-gray-400 dark:text-gray-500">{{ $index + 1 }}</td>
+                                    <td class="px-3 py-3 font-mono text-xs font-bold text-gray-900 dark:text-white whitespace-nowrap">
                                         {{ $row->{'Numero de Evento'} }}
                                     </td>
-                                    <td class="px-4 py-3 text-gray-700 dark:text-gray-300 max-w-[200px] truncate">
+                                    <td class="px-3 py-3 text-gray-700 dark:text-gray-300 text-xs leading-tight">
                                         {{ $row->{'Tipo de Evento'} }}
                                     </td>
-                                    <td class="px-4 py-3 text-gray-700 dark:text-gray-300">
+                                    <td class="px-3 py-3 text-gray-700 dark:text-gray-300 text-xs">
                                         {{ $row->Telefonista }}
                                     </td>
-                                    <td class="px-4 py-3 text-gray-700 dark:text-gray-300">
+                                    <td class="px-3 py-3 text-gray-700 dark:text-gray-300 text-xs">
                                         {{ $row->Despachador }}
                                     </td>
-                                    <td class="px-4 py-3 text-center font-mono text-xs">
+                                    <td class="px-3 py-3 text-center font-mono text-xs text-gray-600 dark:text-gray-400 whitespace-nowrap">
                                         {{ $row->{'Hora Llamada'} ?? '-' }}
                                     </td>
-                                    <td class="px-4 py-3 text-center font-mono text-xs">
+                                    <td class="px-3 py-3 text-center font-mono text-xs text-gray-600 dark:text-gray-400 whitespace-nowrap">
                                         {{ $row->{'Hora Creacion'} ?? '-' }}
                                     </td>
-                                    <td class="px-4 py-3 text-center font-mono text-xs">
+                                    <td class="px-3 py-3 text-center font-mono text-xs text-gray-600 dark:text-gray-400 whitespace-nowrap">
                                         {{ $row->{'Hora Despacho'} ?? '-' }}
                                     </td>
-                                    <td class="px-4 py-3 text-center font-mono text-xs">
+                                    <td class="px-3 py-3 text-center font-mono text-xs text-gray-600 dark:text-gray-400 whitespace-nowrap">
                                         {{ $row->{'Hora En Sitio'} ?? '-' }}
                                     </td>
-                                    <td class="px-4 py-3 text-center font-mono text-xs">
+                                    <td class="px-3 py-3 text-center font-mono text-xs text-gray-600 dark:text-gray-400 whitespace-nowrap">
                                         {{ $row->{'Hora Terminado'} ?? '-' }}
                                     </td>
-                                    <td class="px-4 py-3 text-center font-mono text-xs">
+                                    <td class="px-3 py-3 text-center font-mono text-xs text-gray-600 dark:text-gray-400 whitespace-nowrap">
                                         {{ $row->{'Hora Cierre'} ?? '-' }}
                                     </td>
-                                    <td class="px-4 py-3 text-center font-mono text-xs font-bold">
+                                    <td class="px-3 py-3 text-center font-mono text-xs font-bold text-gray-900 dark:text-white whitespace-nowrap">
                                         {{ $row->{'Tiempo Total'} ?? '-' }}
                                     </td>
                                 </tr>
