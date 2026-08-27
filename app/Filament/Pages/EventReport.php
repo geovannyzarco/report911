@@ -66,13 +66,15 @@ class EventReport extends Page implements HasForms, HasTable
                             ->label('Fecha Desde')
                             ->required()
                             ->native(false)
-                            ->displayFormat('d/m/Y H:i'),
+                            ->displayFormat('d/m/Y H:i')
+                            ->timezone('America/El_Salvador'),
 
                         DateTimePicker::make('fechaHasta')
                             ->label('Fecha Hasta')
                             ->required()
                             ->native(false)
-                            ->displayFormat('d/m/Y H:i'),
+                            ->displayFormat('d/m/Y H:i')
+                            ->timezone('America/El_Salvador'),
 
                         Forms\Components\TextInput::make('busqueda')
                             ->label('Buscar por Numero de Evento')
@@ -183,15 +185,8 @@ class EventReport extends Page implements HasForms, HasTable
             'fechaHasta' => 'required',
         ]);
 
-        $desde = Carbon::parse($this->fechaDesde)->format('Ymd H:i:s');
-        $hasta = Carbon::parse($this->fechaHasta)->format('Ymd H:i:s');
-
-        logger('EventReport buscar', [
-            'fechaDesde_raw' => $this->fechaDesde,
-            'fechaHasta_raw' => $this->fechaHasta,
-            'desde_formatted' => $desde,
-            'hasta_formatted' => $hasta,
-        ]);
+        $desde = Carbon::parse($this->fechaDesde, 'America/El_Salvador')->format('Ymd H:i:s');
+        $hasta = Carbon::parse($this->fechaHasta, 'America/El_Salvador')->format('Ymd H:i:s');
 
         $query = "
             WITH cte_Calls AS (
