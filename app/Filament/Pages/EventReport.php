@@ -3,7 +3,7 @@
 namespace App\Filament\Pages;
 
 use Filament\Forms;
-use Filament\Forms\Components\DatePicker;
+use Filament\Forms\Components\DateTimePicker;
 use Filament\Forms\Concerns\InteractsWithForms;
 use Filament\Forms\Contracts\HasForms;
 use Filament\Pages\Page;
@@ -62,17 +62,17 @@ class EventReport extends Page implements HasForms, HasTable
                     ->description('Selecciona un rango de fechas para consultar los eventos')
                     ->icon('heroicon-m-funnel')
                     ->schema([
-                        DatePicker::make('fechaDesde')
+                        DateTimePicker::make('fechaDesde')
                             ->label('Fecha Desde')
                             ->required()
                             ->native(false)
-                            ->displayFormat('d/m/Y'),
+                            ->displayFormat('d/m/Y H:i'),
 
-                        DatePicker::make('fechaHasta')
+                        DateTimePicker::make('fechaHasta')
                             ->label('Fecha Hasta')
                             ->required()
                             ->native(false)
-                            ->displayFormat('d/m/Y'),
+                            ->displayFormat('d/m/Y H:i'),
 
                         Forms\Components\TextInput::make('busqueda')
                             ->label('Buscar por Numero de Evento')
@@ -168,7 +168,7 @@ class EventReport extends Page implements HasForms, HasTable
                     ->label('Tiempo')
                     ->weight('bold'),
             ])
-            ->paginated([10, 25, 50, 100])
+            ->paginated(['10', '25', '50', '100'])
             ->defaultPaginationPageOption(25)
             ->searchable(false)
             ->filters([])
@@ -183,8 +183,8 @@ class EventReport extends Page implements HasForms, HasTable
             'fechaHasta' => 'required|date|after_or_equal:fechaDesde',
         ]);
 
-        $desde = Carbon::parse($this->fechaDesde)->startOfDay()->format('Ymd H:i:s');
-        $hasta = Carbon::parse($this->fechaHasta)->endOfDay()->format('Ymd H:i:s');
+        $desde = Carbon::parse($this->fechaDesde)->format('Ymd H:i:s');
+        $hasta = Carbon::parse($this->fechaHasta)->format('Ymd H:i:s');
 
         $query = "
             WITH cte_Calls AS (
