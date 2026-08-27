@@ -40,39 +40,39 @@
 
             {{-- Tabla de resultados --}}
             @if(count($this->getResultadosFiltrados()) > 0)
-                <div class="fi-ta-ctn inline-block w-full overflow-x-auto rounded-xl border border-gray-200 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-900">
-                    <table class="fi-ta-table w-full text-start divide-y divide-gray-200 dark:divide-gray-700">
+                <div class="fi-ta-ctn w-full overflow-x-auto rounded-xl border border-gray-200 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-900">
+                    <table class="fi-ta-table w-full text-start divide-y divide-gray-200 dark:divide-gray-700" style="table-layout: fixed; min-width: 1200px;">
                         <thead class="fi-ta-header bg-gray-50 dark:bg-gray-800/50">
                             <tr class="fi-ta-header-row border-b border-gray-200 dark:border-gray-700">
-                                <th class="fi-ta-header-cell px-3 py-3.5 text-start text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">#</th>
-                                <th class="fi-ta-header-cell px-3 py-3.5 text-start text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">Evento</th>
-                                <th class="fi-ta-header-cell px-3 py-3.5 text-start text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">Tipo</th>
-                                <th class="fi-ta-header-cell px-3 py-3.5 text-start text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">Telefonista</th>
-                                <th class="fi-ta-header-cell px-3 py-3.5 text-start text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">Despachador</th>
-                                <th class="fi-ta-header-cell px-3 py-3.5 text-center text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">Llamada</th>
-                                <th class="fi-ta-header-cell px-3 py-3.5 text-center text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">Creacion</th>
-                                <th class="fi-ta-header-cell px-3 py-3.5 text-center text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">Despacho</th>
-                                <th class="fi-ta-header-cell px-3 py-3.5 text-center text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">En Sitio</th>
-                                <th class="fi-ta-header-cell px-3 py-3.5 text-center text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">Terminado</th>
-                                <th class="fi-ta-header-cell px-3 py-3.5 text-center text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">Cierre</th>
-                                <th class="fi-ta-header-cell px-3 py-3.5 text-center text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">Tiempo</th>
+                                <th class="fi-ta-header-cell px-3 py-3.5 text-start text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400" style="width: 40px;">#</th>
+                                <th class="fi-ta-header-cell px-3 py-3.5 text-start text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400" style="width: 180px;">Evento</th>
+                                <th class="fi-ta-header-cell px-3 py-3.5 text-start text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400" style="width: 200px;">Tipo</th>
+                                <th class="fi-ta-header-cell px-3 py-3.5 text-start text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400" style="width: 150px;">Telefonista</th>
+                                <th class="fi-ta-header-cell px-3 py-3.5 text-start text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400" style="width: 150px;">Despachador</th>
+                                <th class="fi-ta-header-cell px-3 py-3.5 text-center text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400" style="width: 80px;">Llamada</th>
+                                <th class="fi-ta-header-cell px-3 py-3.5 text-center text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400" style="width: 80px;">Creacion</th>
+                                <th class="fi-ta-header-cell px-3 py-3.5 text-center text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400" style="width: 80px;">Despacho</th>
+                                <th class="fi-ta-header-cell px-3 py-3.5 text-center text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400" style="width: 80px;">En Sitio</th>
+                                <th class="fi-ta-header-cell px-3 py-3.5 text-center text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400" style="width: 80px;">Terminado</th>
+                                <th class="fi-ta-header-cell px-3 py-3.5 text-center text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400" style="width: 80px;">Cierre</th>
+                                <th class="fi-ta-header-cell px-3 py-3.5 text-center text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400" style="width: 80px;">Tiempo</th>
                             </tr>
                         </thead>
                         <tbody class="fi-ta-body divide-y divide-gray-200 dark:divide-gray-700">
                             @foreach($this->getResultadosFiltrados() as $index => $row)
                                 <tr class="fi-ta-row bg-white transition-colors hover:bg-gray-50 dark:bg-gray-900 dark:hover:bg-gray-800/50">
                                     <td class="fi-ta-cell px-3 py-3 text-sm text-gray-500 dark:text-gray-400">{{ $index + 1 }}</td>
-                                    <td class="fi-ta-cell px-3 py-3 text-sm font-bold text-gray-950 dark:text-white">{{ $row->{'Numero de Evento'} }}</td>
-                                    <td class="fi-ta-cell px-3 py-3 text-sm text-gray-600 dark:text-gray-400">{{ $row->{'Tipo de Evento'} }}</td>
-                                    <td class="fi-ta-cell px-3 py-3 text-sm text-gray-600 dark:text-gray-400">{{ $row->Telefonista }}</td>
-                                    <td class="fi-ta-cell px-3 py-3 text-sm text-gray-600 dark:text-gray-400">{{ $row->Despachador }}</td>
-                                    <td class="fi-ta-cell px-3 py-3 text-center text-sm text-gray-600 dark:text-gray-400">{{ $row->{'Hora Llamada'} ?? '-' }}</td>
-                                    <td class="fi-ta-cell px-3 py-3 text-center text-sm text-gray-600 dark:text-gray-400">{{ $row->{'Hora Creacion'} ?? '-' }}</td>
-                                    <td class="fi-ta-cell px-3 py-3 text-center text-sm text-gray-600 dark:text-gray-400">{{ $row->{'Hora Despacho'} ?? '-' }}</td>
-                                    <td class="fi-ta-cell px-3 py-3 text-center text-sm text-gray-600 dark:text-gray-400">{{ $row->{'Hora En Sitio'} ?? '-' }}</td>
-                                    <td class="fi-ta-cell px-3 py-3 text-center text-sm text-gray-600 dark:text-gray-400">{{ $row->{'Hora Terminado'} ?? '-' }}</td>
-                                    <td class="fi-ta-cell px-3 py-3 text-center text-sm text-gray-600 dark:text-gray-400">{{ $row->{'Hora Cierre'} ?? '-' }}</td>
-                                    <td class="fi-ta-cell px-3 py-3 text-center text-sm font-bold text-gray-950 dark:text-white">{{ $row->{'Tiempo Total'} ?? '-' }}</td>
+                                    <td class="fi-ta-cell px-3 py-3 text-sm font-bold text-gray-950 dark:text-white whitespace-nowrap">{{ $row->{'Numero de Evento'} }}</td>
+                                    <td class="fi-ta-cell px-3 py-3 text-sm text-gray-600 dark:text-gray-400 truncate" title="{{ $row->{'Tipo de Evento'} }}">{{ $row->{'Tipo de Evento'} }}</td>
+                                    <td class="fi-ta-cell px-3 py-3 text-sm text-gray-600 dark:text-gray-400 truncate" title="{{ $row->Telefonista }}">{{ $row->Telefonista }}</td>
+                                    <td class="fi-ta-cell px-3 py-3 text-sm text-gray-600 dark:text-gray-400 truncate" title="{{ $row->Despachador }}">{{ $row->Despachador }}</td>
+                                    <td class="fi-ta-cell px-3 py-3 text-center text-sm text-gray-600 dark:text-gray-400 whitespace-nowrap">{{ $row->{'Hora Llamada'} ?? '-' }}</td>
+                                    <td class="fi-ta-cell px-3 py-3 text-center text-sm text-gray-600 dark:text-gray-400 whitespace-nowrap">{{ $row->{'Hora Creacion'} ?? '-' }}</td>
+                                    <td class="fi-ta-cell px-3 py-3 text-center text-sm text-gray-600 dark:text-gray-400 whitespace-nowrap">{{ $row->{'Hora Despacho'} ?? '-' }}</td>
+                                    <td class="fi-ta-cell px-3 py-3 text-center text-sm text-gray-600 dark:text-gray-400 whitespace-nowrap">{{ $row->{'Hora En Sitio'} ?? '-' }}</td>
+                                    <td class="fi-ta-cell px-3 py-3 text-center text-sm text-gray-600 dark:text-gray-400 whitespace-nowrap">{{ $row->{'Hora Terminado'} ?? '-' }}</td>
+                                    <td class="fi-ta-cell px-3 py-3 text-center text-sm text-gray-600 dark:text-gray-400 whitespace-nowrap">{{ $row->{'Hora Cierre'} ?? '-' }}</td>
+                                    <td class="fi-ta-cell px-3 py-3 text-center text-sm font-bold text-gray-950 dark:text-white whitespace-nowrap">{{ $row->{'Tiempo Total'} ?? '-' }}</td>
                                 </tr>
                             @endforeach
                         </tbody>
