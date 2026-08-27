@@ -27,11 +27,17 @@ class EventReport extends Page implements HasForms
 
     protected static ?string $navigationLabel = 'Reporte de Eventos';
 
-    protected static ?string $navigationIcon = 'heroicon-m-document-text';
-
     protected static ?int $navigationSort = 1;
 
     protected static string $view = 'filament.pages.event-report';
+
+    /**
+     * Icono de navegacion en el sidebar.
+     */
+    public static function getNavigationIcon(): ?string
+    {
+        return 'heroicon-m-document-text';
+    }
 
     /**
      * Grupo de navegacion en el sidebar.
