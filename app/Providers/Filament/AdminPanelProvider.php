@@ -27,6 +27,7 @@ class AdminPanelProvider extends PanelProvider
             ->id('monitoreo')
             ->path('monitoreo')
             ->login(Login::class)
+            ->topNavigation()
             ->colors([
                 'primary' => Color::Blue,
             ])

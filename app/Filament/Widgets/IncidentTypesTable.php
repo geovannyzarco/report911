@@ -16,7 +16,7 @@ use Illuminate\Support\Facades\DB;
  */
 class IncidentTypesTable extends BaseWidget
 {
-    protected static ?string $heading = 'Tipos de Incidente sin Cerrar (Hoy)';
+    protected static ?string $heading = 'Top 5 de Incidentes sin Cerrar (Hoy)';
 
     protected static ?int $sort = 5;
 
@@ -53,7 +53,7 @@ class IncidentTypesTable extends BaseWidget
         }
 
         return $table
-            ->records(fn () => $records)
+            ->records(fn() => $records)
             ->columns([
                 Tables\Columns\TextColumn::make('tipo')
                     ->label('Tipo de Incidente')
@@ -66,7 +66,6 @@ class IncidentTypesTable extends BaseWidget
                     ->sortable()
                     ->weight('bold'),
             ])
-            ->defaultSort('cantidad', 'desc')
-            ->paginated(false);
+            ->defaultSort('cantidad', 'desc');
     }
 }

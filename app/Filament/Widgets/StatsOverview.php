@@ -43,17 +43,18 @@ class StatsOverview extends StatsOverviewWidget
         $resumen = $service->getResumenEstadistico($hoy, $finHoy);
 
         return [
-            // Tarjeta 1: Total de incidentes creados hoy
+
+            // Tarjeta 1: Total de llamadas telefonicas recibidas hoy
+            Stat::make('Llamadas Hoy', number_format($resumen['total_llamadas']))
+                ->description('Total de llamadas recibidas hoy')
+                ->descriptionIcon('heroicon-m-phone')                          // Icono de telefono
+                ->color('success'),
+            // Color verde
+            // Tarjeta 2: Total de incidentes creados hoy
             Stat::make('Incidentes Hoy', number_format($resumen['total_incidentes']))
                 ->description('Total de incidentes registrados hoy')          // Texto descriptivo debajo del numero
                 ->descriptionIcon('heroicon-m-document-text')                 // Icono Heroicon junto a la descripcion
                 ->color('primary'),                                            // Color azul de Filament
-
-            // Tarjeta 2: Total de llamadas telefonicas recibidas hoy
-            Stat::make('Llamadas Hoy', number_format($resumen['total_llamadas']))
-                ->description('Total de llamadas recibidas hoy')
-                ->descriptionIcon('heroicon-m-phone')                          // Icono de telefono
-                ->color('success'),                                            // Color verde
 
             // Tarjeta 3: Total de despachos (respuestas) realizados hoy
             Stat::make('Despachos Hoy', number_format($resumen['total_despachos']))

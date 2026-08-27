@@ -17,13 +17,18 @@ use Filament\Widgets\ChartWidget;
 class IncidentClassificationChart extends ChartWidget
 {
     // Titulo del widget
-    protected ?string $heading = 'Incidentes por Tipo';
+    protected ?string $heading = 'Incidentes por tipo SIN CERRAR';
 
     // Intervalo de polling: cada 30 segundos se re-ejecuta getData() via AJAX
     protected ?string $pollingInterval = '30s';
 
     // Altura de la grafica en pixeles
     protected ?string $maxHeight = '300';
+
+    // Orden de visualizacion en el dashboard (1=primer widget)
+    protected static ?int $sort = 3;
+
+    //protected int|string|array $columnSpan = 'full';
 
     /**
      * Obtiene los datos para la grafica de dona.
