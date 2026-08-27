@@ -13,6 +13,7 @@ use Filament\Tables;
 use Filament\Tables\Concerns\InteractsWithTable;
 use Filament\Tables\Contracts\HasTable;
 use Filament\Tables\Table;
+use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 
@@ -116,8 +117,17 @@ class EventReport extends Page implements HasForms, HasTable
             }, array_keys($records), $records);
         }
 
+        $perPage = 25;
+        $paginator = new LengthAwarePaginator(
+            $records,
+            count($records),
+            $perPage,
+            request()->input('page', 1),
+            ['path' => request()->url()]
+        );
+
         return $table
-            ->records(fn () => $records)
+            ->records(fn () => $paginator)
             ->columns([
                 Tables\Columns\TextColumn::make('id')
                     ->label('#')
