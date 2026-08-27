@@ -23,6 +23,8 @@ class EventReport extends Page implements HasForms
 {
     use InteractsWithForms;
 
+    protected string $view = 'filament.pages.event-report';
+
     protected static ?string $title = 'Reporte de Eventos';
 
     protected static ?string $navigationLabel = 'Reporte de Eventos';
@@ -43,14 +45,6 @@ class EventReport extends Page implements HasForms
     public static function getNavigationGroup(): ?string
     {
         return 'Reportes';
-    }
-
-    /**
-     * Retorna la vista Blade para esta pagina.
-     */
-    public function render(): View
-    {
-        return view('filament.pages.event-report');
     }
 
     /**
