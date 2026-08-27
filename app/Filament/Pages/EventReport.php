@@ -29,11 +29,17 @@ class EventReport extends Page implements HasForms
 
     protected static ?string $navigationIcon = 'heroicon-m-document-text';
 
-    protected static ?string $navigationGroup = 'Reportes';
-
     protected static ?int $navigationSort = 1;
 
     protected static string $view = 'filament.pages.event-report';
+
+    /**
+     * Grupo de navegacion en el sidebar.
+     */
+    public static function getNavigationGroup(): ?string
+    {
+        return 'Reportes';
+    }
 
     /**
      * Fecha desde para el filtro.
