@@ -27,7 +27,7 @@ class Dashboard extends BaseDashboard
     {
         return [
             StatsOverview::class,
-            IncidentAlertsWidget::class,
+            //IncidentAlertsWidget::class,
             //DispatchStatusWidget::class,
             DispatchStatusTable::class,
             // IncidentClassificationChart::class,

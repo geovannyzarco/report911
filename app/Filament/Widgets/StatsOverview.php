@@ -57,10 +57,10 @@ class StatsOverview extends StatsOverviewWidget
                 ->color('primary'),                                            // Color azul de Filament
 
             // Tarjeta 3: Total de despachos (respuestas) realizados hoy
-            Stat::make('Despachos Hoy', number_format($resumen['total_despachos']))
+            /* Stat::make('Despachos Hoy', number_format($resumen['total_despachos']))
                 ->description('Total de despachos realizados hoy')
                 ->descriptionIcon('heroicon-m-truck')                          // Icono de camion/boton
-                ->color('warning'),                                            // Color naranja/amarillo
+                ->color('warning'),  */                                          // Color naranja/amarillo
         ];
     }
 }
