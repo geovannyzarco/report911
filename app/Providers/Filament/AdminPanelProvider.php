@@ -16,6 +16,7 @@ use Illuminate\Cookie\Middleware\EncryptCookies;
 use Illuminate\Foundation\Http\Middleware\VerifyCsrfToken;
 use Illuminate\Routing\Middleware\SubstituteBindings;
 use Illuminate\Session\Middleware\StartSession;
+use Illuminate\Support\Facades\Blade;
 use Illuminate\View\Middleware\ShareErrorsFromSession;
 
 class AdminPanelProvider extends PanelProvider
@@ -37,7 +38,11 @@ class AdminPanelProvider extends PanelProvider
                 Dashboard::class,
             ])
             ->discoverWidgets(in: app_path('Filament/Widgets'), for: 'App\Filament\Widgets')
-            ->renderHook('panels::head.end', fn (): string => \Illuminate\Support\Facades\Blade::render("@vite('resources/css/app.css')"))
+            ->renderHook('panels::head.end', fn (): string => Blade::render("
+                @vite('resources/css/app.css')
+                <link rel=\"stylesheet\" href=\"https://unpkg.com/leaflet@1.9.4/dist/leaflet.css\" crossorigin=\"\" />
+                <script src=\"https://unpkg.com/leaflet@1.9.4/dist/leaflet.js\" crossorigin=\"\"></script>
+            "))
             ->middleware([
                 EncryptCookies::class,
                 AddQueuedCookiesToResponse::class,

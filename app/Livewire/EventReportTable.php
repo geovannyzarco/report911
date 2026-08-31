@@ -227,6 +227,9 @@ class EventReportTable extends Component
 
         // Abre el modal usando el evento de Filament (open-modal)
         $this->dispatch('open-modal', id: 'detalle-evento');
+
+        // Notifica al navegador que el mapa debe inicializarse (event Livewire -> JS)
+        $this->dispatch('mapa-evento-listo');
     }
 
     #[Computed]

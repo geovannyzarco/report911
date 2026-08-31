@@ -210,7 +210,6 @@
                     {{-- Mapa interactivo con Leaflet.js y OpenStreetMap --}}
                     @if($detalleEvento->{'Coordenada X'} && $detalleEvento->{'Coordenada Y'})
                         <div class="mt-4">
-                            <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="" />
                             <div id="mapa-evento" class="w-full h-[400px] rounded-lg border border-gray-200 dark:border-gray-700 z-0"></div>
                             <div class="mt-2 flex items-center gap-2">
                                 <a href="https://www.google.com/maps?q={{ $detalleEvento->{'Coordenada Y'} }},{{ $detalleEvento->{'Coordenada X'} }}" target="_blank" rel="noopener noreferrer"
@@ -219,42 +218,35 @@
                                     Abrir en Google Maps
                                 </a>
                             </div>
-                            <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
-                            <script>
-                                document.addEventListener('livewire:initialized', function () {
-                                    initMapaEvento();
-                                });
-                                // Inicializa el mapa de Leaflet con las coordenadas del evento
-                                // X = Longitud, Y = Latitud (formato del CAD)
-                                function initMapaEvento() {
-                                    var lat = {{ $detalleEvento->{'Coordenada Y'} }};
-                                    var lng = {{ $detalleEvento->{'Coordenada X'} }};
-
-                                    // Verifica que las coordenadas sean validas
-                                    if (isNaN(lat) || isNaN(lng) || (lat === 0 && lng === 0)) {
-                                        document.getElementById('mapa-evento').innerHTML = '<div class="flex items-center justify-center h-full text-gray-500">Coordenadas no disponibles</div>';
-                                        return;
-                                    }
-
-                                    // Crea el mapa centrado en las coordenadas del evento (zoom 16 para vista cercana)
-                                    var mapa = L.map('mapa-evento', { zoomControl: true }).setView([lat, lng], 16);
-
-                                    // Agrega la capa de OpenStreetMap (tiles gratis)
-                                    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                                        attribution: '&copy; OpenStreetMap contributors',
-                                        maxZoom: 19
-                                    }).addTo(mapa);
-
-                                    // Agrega un marker en la ubicacion exacta del evento
-                                    L.marker([lat, lng]).addTo(mapa)
-                                        .bindPopup('<strong>{{ addslashes($detalleEvento->{'Numero de Evento'} ?? '') }}</strong><br>{{ addslashes($detalleEvento->{'Direccion Completa'} ?? '') }}')
-                                        .openPopup();
-
-                                    // Invalidate size para que el mapa se renderice correctamente dentro del modal
-                                    setTimeout(function () { mapa.invalidateSize(); }, 200);
-                                }
-                            </script>
                         </div>
+                        <script>
+                            // Inicializa el mapa de Leaflet con las coordenadas del evento
+                            // Se ejecuta via Livewire event para garantizar que el DOM ya esta renderizado
+                            document.addEventListener('livewire:initialized', function () {
+                                Livewire.on('mapa-evento-listo', function () {
+                                    setTimeout(function () {
+                                        var el = document.getElementById('mapa-evento');
+                                        if (!el || el._mapInit) return;
+                                        el._mapInit = true;
+                                        var lat = {{ $detalleEvento->{'Coordenada Y'} }};
+                                        var lng = {{ $detalleEvento->{'Coordenada X'} }};
+                                        if (isNaN(lat) || isNaN(lng) || (lat === 0 && lng === 0)) {
+                                            el.innerHTML = '<div class="flex items-center justify-center h-full text-gray-500">Coordenadas no disponibles</div>';
+                                            return;
+                                        }
+                                        var mapa = L.map(el, { zoomControl: true }).setView([lat, lng], 16);
+                                        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                                            attribution: '&copy; OpenStreetMap contributors',
+                                            maxZoom: 19
+                                        }).addTo(mapa);
+                                        L.marker([lat, lng]).addTo(mapa)
+                                            .bindPopup('<strong>{{ addslashes($detalleEvento->{'Numero de Evento'} ?? '') }}</strong><br>{{ addslashes($detalleEvento->{'Direccion Completa'} ?? '') }}')
+                                            .openPopup();
+                                        setTimeout(function () { mapa.invalidateSize(); }, 300);
+                                    }, 150);
+                                });
+                            });
+                        </script>
                     @endif
                 </x-filament::section>
 
