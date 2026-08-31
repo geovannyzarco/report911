@@ -46,6 +46,8 @@ class UserResource extends Resource
                         Forms\Components\TextInput::make('email')
                             ->label('Correo Electrónico')
                             ->email()
+                            ->required()
+                            ->unique(ignoreRecord: true)
                             ->maxLength(255),
                         Forms\Components\TextInput::make('password')
                             ->label('Contraseña')
@@ -54,6 +56,14 @@ class UserResource extends Resource
                             ->dehydrated(fn ($state) => filled($state))
                             ->required(fn (string $operation): bool => $operation === 'create')
                             ->maxLength(255),
+                        Forms\Components\Select::make('roles')
+                            ->label('Rol')
+                            ->relationship('roles', 'name')
+                            ->preload()
+                            ->searchable()
+                            ->required()
+                            ->multiple(false)
+                            ->columnSpanFull(),
                     ])->columns(2),
             ]);
     }
@@ -73,6 +83,10 @@ class UserResource extends Resource
                 Tables\Columns\TextColumn::make('email')
                     ->label('Correo')
                     ->searchable()
+                    ->sortable(),
+                Tables\Columns\TextColumn::make('roles.name')
+                    ->label('Rol')
+                    ->badge()
                     ->sortable(),
                 Tables\Columns\TextColumn::make('created_at')
                     ->label('Creado')

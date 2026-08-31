@@ -4,7 +4,6 @@ namespace Database\Seeders;
 
 use App\Models\User;
 use Illuminate\Database\Seeder;
-use Spatie\Permission\Models\Permission;
 use Spatie\Permission\Models\Role;
 use Spatie\Permission\PermissionRegistrar;
 
@@ -15,47 +14,55 @@ class RolePermissionSeeder extends Seeder
         // Reset cached roles and permissions
         app()[PermissionRegistrar::class]->forgetCachedPermissions();
 
-        // Crear permisos
-        Permission::create(['name' => 'ver dashboard']);
-        Permission::create(['name' => 'ver reportes']);
-        Permission::create(['name' => 'generar reportes']);
-        Permission::create(['name' => 'ver monitoreo']);
-        Permission::create(['name' => 'administrar usuarios']);
-        Permission::create(['name' => 'editar usuarios']);
-        Permission::create(['name' => 'eliminar usuarios']);
-
-        // Crear roles y asignar permisos
-        $admin = Role::create(['name' => 'admin']);
-        $admin->givePermissionTo([
-            'ver dashboard',
-            'ver reportes',
-            'generar reportes',
-            'ver monitoreo',
-            'administrar usuarios',
-            'editar usuarios',
-            'eliminar usuarios',
+        // Los permisos ya fueron generados por Filament Shield.
+        // Roles con permisos Shield (formato Pascal):
+        // super_admin: acceso total
+        $superAdmin = Role::firstOrCreate(['name' => 'super_admin']);
+        $superAdmin->givePermissionTo([
+            'ViewAny:User', 'View:User', 'Create:User', 'Update:User', 'Delete:User',
+            'DeleteAny:User', 'Restore:User', 'ForceDelete:User', 'ForceDeleteAny:User',
+            'RestoreAny:User', 'Replicate:User', 'Reorder:User',
+            'ViewAny:Role', 'View:Role', 'Create:Role', 'Update:Role', 'Delete:Role',
+            'DeleteAny:Role', 'Restore:Role', 'ForceDelete:Role', 'ForceDeleteAny:Role',
+            'RestoreAny:Role', 'Replicate:Role', 'Reorder:Role',
+            'View:Dashboard', 'View:EventReport',
+            'View:StatsOverview', 'View:IncidentAlertsWidget', 'View:DispatchStatusWidget',
+            'View:FieldResourcesWidget', 'View:IncidentClassificationChart',
+            'View:IncidentsByStatusChart', 'View:ActiveEventsWidget',
         ]);
 
-        $operador = Role::create(['name' => 'operador']);
-        $operador->givePermissionTo([
-            'ver dashboard',
-            'ver reportes',
-            'ver monitoreo',
+        // jefe_despacho: puede gestionar usuarios y ver todo
+        $jefeDespacho = Role::firstOrCreate(['name' => 'jefe_despacho']);
+        $jefeDespacho->givePermissionTo([
+            'ViewAny:User', 'View:User', 'Create:User', 'Update:User', 'Delete:User',
+            'ViewAny:Role', 'View:Role',
+            'View:Dashboard', 'View:EventReport',
+            'View:StatsOverview', 'View:IncidentAlertsWidget', 'View:DispatchStatusWidget',
+            'View:FieldResourcesWidget', 'View:IncidentClassificationChart',
+            'View:IncidentsByStatusChart', 'View:ActiveEventsWidget',
         ]);
 
-        $supervisor = Role::create(['name' => 'supervisor']);
-        $supervisor->givePermissionTo([
-            'ver dashboard',
-            'ver reportes',
-            'generar reportes',
-            'ver monitoreo',
-            'editar usuarios',
+        // analista: solo lectura y reportes
+        $analista = Role::firstOrCreate(['name' => 'analista']);
+        $analista->givePermissionTo([
+            'View:Dashboard', 'View:EventReport',
+            'View:StatsOverview', 'View:IncidentAlertsWidget', 'View:DispatchStatusWidget',
+            'View:FieldResourcesWidget', 'View:IncidentClassificationChart',
+            'View:IncidentsByStatusChart', 'View:ActiveEventsWidget',
         ]);
 
-        // Asignar rol admin al usuario Geovanny
+        // auditor: solo lectura del dashboard
+        $auditor = Role::firstOrCreate(['name' => 'auditor']);
+        $auditor->givePermissionTo([
+            'View:Dashboard', 'View:EventReport',
+            'View:StatsOverview', 'View:IncidentAlertsWidget', 'View:DispatchStatusWidget',
+            'View:IncidentClassificationChart', 'View:IncidentsByStatusChart',
+        ]);
+
+        // Asignar rol super_admin al usuario Geovanny
         $user = User::where('oni', 'ep00116')->first();
         if ($user) {
-            $user->assignRole('admin');
+            $user->assignRole('super_admin');
         }
     }
 }

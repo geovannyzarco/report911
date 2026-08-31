@@ -19,10 +19,11 @@ class User extends Authenticatable implements FilamentUser, HasName
 
     /**
      * Determina si el usuario puede acceder al panel de Filament.
+     * Solo usuarios con al menos un rol pueden acceder.
      */
     public function canAccessPanel(Panel $panel): bool
     {
-        return true;
+        return $this->hasRole(['super_admin', 'jefe_despacho', 'analista', 'auditor']);
     }
 
     /**
