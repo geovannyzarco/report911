@@ -89,6 +89,6 @@ class EventReport extends Page implements HasForms
 
         $this->busquedaEjecutada = true;
 
-        $this->dispatch('search', $desde, $hasta);
+        $this->dispatch('search', $desde, $hasta, $this->busqueda ?? '');
     }
 }

@@ -4,6 +4,8 @@ namespace App\Livewire;
 
 use Illuminate\Support\Facades\DB;
 use Livewire\Component;
+use Livewire\Attributes\Computed;
+use Livewire\Attributes\On;
 
 /**
  * Livewire Component: EventReportTable
@@ -23,19 +25,36 @@ class EventReportTable extends Component
 
     public bool $busquedaEjecutada = false;
 
-    protected $listeners = ['search' => 'search'];
+    public string $sortColumn = 'evento';
 
-    public function search(string $desde, string $hasta): void
+    public string $sortDirection = 'asc';
+
+    #[On('search')]
+    public function search(string $desde, string $hasta, string $busqueda = ''): void
     {
         $this->fechaDesde = $desde;
         $this->fechaHasta = $hasta;
+        $this->busqueda = $busqueda;
         $this->busquedaEjecutada = true;
+        $this->currentPage = 1;
+    }
+
+    public function sortBy(string $column): void
+    {
+        if ($this->sortColumn === $column) {
+            $this->sortDirection = $this->sortDirection === 'asc' ? 'desc' : 'asc';
+        } else {
+            $this->sortColumn = $column;
+            // Para el tiempo, por defecto ordenamos descendente (mayor a menor)
+            $this->sortDirection = $column === 'tiempo' ? 'desc' : 'asc';
+        }
+        
         $this->currentPage = 1;
     }
 
     public function goToPage(int $page): void
     {
-        $this->currentPage = max(1, $page);
+        $this->currentPage = max(1, min($page, $this->totalPages()));
     }
 
     public function previousPage(): void
@@ -45,7 +64,7 @@ class EventReportTable extends Component
 
     public function nextPage(): void
     {
-        $this->currentPage++;
+        $this->currentPage = min($this->totalPages(), $this->currentPage + 1);
     }
 
     public function updatingPerPage(): void
@@ -53,7 +72,8 @@ class EventReportTable extends Component
         $this->currentPage = 1;
     }
 
-    public function getResultsProperty(): array
+    #[Computed]
+    public function results(): array
     {
         if (! $this->busquedaEjecutada) {
             return [];
@@ -61,6 +81,12 @@ class EventReportTable extends Component
 
         $desde = $this->fechaDesde;
         $hasta = $this->fechaHasta;
+
+        $orderField = "le.[NUMERO_SECUENCIA]";
+        if ($this->sortColumn === 'tiempo') {
+            $orderField = "CASE WHEN le.HoraCierre >= le.[FECHA_CREACION] THEN DATEDIFF(SECOND, le.[FECHA_CREACION], le.HoraCierre) ELSE 0 END";
+        }
+        $direction = strtoupper($this->sortDirection) === 'DESC' ? 'DESC' : 'ASC';
 
         $query = "
             WITH cte_Calls AS (
@@ -112,7 +138,7 @@ class EventReportTable extends Component
             LEFT JOIN cte_tiempos tf ON le.ResponseOID = tf.ResponseOID
             LEFT JOIN Agents ag_tel WITH (NOLOCK) ON le.IncidentAgentOID = ag_tel.OID
             LEFT JOIN Agents ag_dsp WITH (NOLOCK) ON tf.DespachadorOID = ag_dsp.OID
-            ORDER BY le.[NUMERO_SECUENCIA]
+            ORDER BY $orderField $direction
         ";
 
         $allResults = DB::connection('sqlsrv_cad')->select($query);
@@ -126,22 +152,25 @@ class EventReportTable extends Component
         return array_values($allResults);
     }
 
-    public function getPagedResultsProperty(): array
+    #[Computed]
+    public function pagedResults(): array
     {
-        $all = $this->results;
+        $all = $this->results();
         $start = ($this->currentPage - 1) * $this->perPage;
 
         return array_slice($all, $start, $this->perPage);
     }
 
-    public function getTotalProperty(): int
+    #[Computed]
+    public function total(): int
     {
-        return count($this->results);
+        return count($this->results());
     }
 
-    public function getTotalPagesProperty(): int
+    #[Computed]
+    public function totalPages(): int
     {
-        return max(1, (int) ceil($this->total / $this->perPage));
+        return max(1, (int) ceil($this->total() / $this->perPage));
     }
 
     public function render()
@@ -149,3 +178,4 @@ class EventReportTable extends Component
         return view('livewire.event-report-table');
     }
 }
+
