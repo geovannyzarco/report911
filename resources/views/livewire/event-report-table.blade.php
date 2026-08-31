@@ -131,7 +131,7 @@
     @endif
 
     {{-- Modal de detalles del evento: se abre al hacer clic en una fila --}}
-    <x-filament::modal id="detalle-evento" wire:model="abrirModal" width="7xl" :close-button="true">
+    <x-filament::modal id="detalle-evento" width="7xl" :close-button="true">
         {{-- Encabezado del modal con el numero de evento --}}
         <x-slot name="heading">
             Detalle del Evento: {{ $detalleEvento->{'Numero de Evento'} ?? '' }}

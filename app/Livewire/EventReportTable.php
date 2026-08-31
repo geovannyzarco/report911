@@ -43,9 +43,6 @@ class EventReportTable extends Component
     /** @var array Lista de notas cronologicas del evento seleccionado */
     public array $notasEvento = [];
 
-    /** @var bool Controla la apertura/cierre del modal de detalles */
-    public bool $abrirModal = false;
-
     #[On('search')]
     public function search(string $desde, string $hasta, string $busqueda = ''): void
     {
@@ -227,7 +224,9 @@ class EventReportTable extends Component
         // Asigna los resultados a las propiedades del componente para el modal
         $this->detalleEvento = $detalle[0] ?? null;
         $this->notasEvento = $notas;
-        $this->abrirModal = true;
+
+        // Abre el modal usando el evento de Filament (open-modal)
+        $this->dispatch('open-modal', id: 'detalle-evento');
     }
 
     #[Computed]
