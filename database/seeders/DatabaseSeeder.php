@@ -12,13 +12,15 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
-        User::create([
-            'name' => 'Geovanny',
-            'oni' => 'ep00116',
-            'email' => 'ep00116@pnc.gob.sv',
-            'password' => '100504',
-            'email_verified_at' => now(),
-        ]);
+        User::firstOrCreate(
+            ['email' => 'ep00116@pnc.gob.sv'],
+            [
+                'name' => 'Geovanny',
+                'oni' => 'ep00116',
+                'password' => '100504',
+                'email_verified_at' => now(),
+            ]
+        );
 
         $this->call([
             RolePermissionSeeder::class,
