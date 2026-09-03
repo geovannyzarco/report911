@@ -43,7 +43,7 @@ class Login extends BaseLogin
     /**
      * Autentica al usuario con manejo de errores personalizado.
      */
-    protected function authenticate(): mixed
+    public function authenticate(): mixed
     {
         try {
             $credentials = $this->getCredentialsFromFormData($this->data);
