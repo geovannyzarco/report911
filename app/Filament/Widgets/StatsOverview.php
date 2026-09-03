@@ -17,6 +17,8 @@ use Illuminate\Support\Carbon;
  */
 class StatsOverview extends StatsOverviewWidget
 {
+    use \BezhanSalleh\FilamentShield\Traits\HasWidgetShield;
+
     /**
      * Define las tres tarjetas de estadisticas que se muestran en el widget.
      * Cada Stat representa un KPI del sistema CAD del dia actual.

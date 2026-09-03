@@ -16,6 +16,8 @@ use Illuminate\Support\Facades\DB;
  */
 class IncidentTypesTable extends BaseWidget
 {
+    use \BezhanSalleh\FilamentShield\Traits\HasWidgetShield;
+
     protected static ?string $heading = 'Top 5 de Incidentes sin Cerrar (Hoy)';
 
     protected static ?int $sort = 5;

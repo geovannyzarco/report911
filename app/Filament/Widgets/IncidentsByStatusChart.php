@@ -14,6 +14,8 @@ use Filament\Widgets\ChartWidget;
  */
 class IncidentsByStatusChart extends ChartWidget
 {
+    use \BezhanSalleh\FilamentShield\Traits\HasWidgetShield;
+
     // Titulo del widget
     protected ?string $heading = 'Estado de Despachos (Hoy)';
 

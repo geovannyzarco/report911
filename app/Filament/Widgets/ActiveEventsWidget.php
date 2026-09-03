@@ -18,6 +18,8 @@ use Illuminate\Support\Facades\DB;
  */
 class ActiveEventsWidget extends BaseWidget
 {
+    use \BezhanSalleh\FilamentShield\Traits\HasWidgetShield;
+
     protected static ?string $heading = 'Incidentes Activos sin Cerrar';
 
     protected static ?int $sort = 4;
@@ -76,7 +78,7 @@ class ActiveEventsWidget extends BaseWidget
             ->orderByRaw('Incidents.CreationTime ASC');
 
         return $table
-            ->query(fn () => $query)
+            ->query(fn() => $query)
             ->columns([
                 // Columna 1: Numero de evento formateado SE911:AAAA:MM:DD:NNNN
                 // SequenceNumber de la DB es compound (ej: "00:25:277737")
@@ -109,7 +111,7 @@ class ActiveEventsWidget extends BaseWidget
                 Tables\Columns\TextColumn::make('Estado')
                     ->label('Estado')
                     ->badge()
-                    ->color(fn (string $state): string => match (true) {
+                    ->color(fn(string $state): string => match (true) {
                         str_contains($state, 'En Ruta') => 'warning',
                         str_contains($state, 'En Sitio') => 'danger',
                         str_contains($state, 'Despachado') => 'info',
@@ -135,6 +137,6 @@ class ActiveEventsWidget extends BaseWidget
                     ->weight('bold'),
             ])
             // Sin paginacion: muestra todos los activos del dia
-            ->paginated([15, 30, 50]);
+            ->paginated([5, 10, 50, 100]);
     }
 }

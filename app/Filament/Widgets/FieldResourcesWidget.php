@@ -19,6 +19,8 @@ use Filament\Widgets\TableWidget as BaseWidget;
  */
 class FieldResourcesWidget extends BaseWidget
 {
+    use \BezhanSalleh\FilamentShield\Traits\HasWidgetShield;
+
     // Titulo del widget que se muestra en el dashboard
     protected static ?string $heading = 'Unidades en Campo';
 

@@ -16,6 +16,8 @@ use Filament\Widgets\ChartWidget;
  */
 class IncidentClassificationChart extends ChartWidget
 {
+    use \BezhanSalleh\FilamentShield\Traits\HasWidgetShield;
+
     // Titulo del widget
     protected ?string $heading = 'Incidentes por tipo SIN CERRAR';
 

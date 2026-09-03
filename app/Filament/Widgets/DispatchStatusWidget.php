@@ -15,6 +15,8 @@ use Filament\Widgets\StatsOverviewWidget\Stat;
  */
 class DispatchStatusWidget extends StatsOverviewWidget
 {
+    use \BezhanSalleh\FilamentShield\Traits\HasWidgetShield;
+
     // Titulo del widget
     protected function getHeading(): string
     {

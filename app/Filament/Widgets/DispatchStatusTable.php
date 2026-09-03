@@ -15,6 +15,8 @@ use Filament\Widgets\TableWidget as BaseWidget;
  */
 class DispatchStatusTable extends BaseWidget
 {
+    use \BezhanSalleh\FilamentShield\Traits\HasWidgetShield;
+
     protected static ?string $heading = 'Detalle de Despachos por Estado';
 
     protected static ?int $sort = 4;

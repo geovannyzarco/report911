@@ -19,6 +19,8 @@ use Filament\Widgets\StatsOverviewWidget\Stat;
  */
 class IncidentAlertsWidget extends StatsOverviewWidget
 {
+    use \BezhanSalleh\FilamentShield\Traits\HasWidgetShield;
+
     /**
      * Retorna el titulo que se muestra encima del widget en el dashboard.
      */
