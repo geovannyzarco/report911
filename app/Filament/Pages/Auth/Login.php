@@ -43,7 +43,7 @@ class Login extends BaseLogin
     /**
      * Autentica al usuario con manejo de errores personalizado.
      */
-    public function authenticate(): mixed
+    public function authenticate(): ?\Filament\Auth\Http\Responses\Contracts\LoginResponse
     {
         try {
             $credentials = $this->getCredentialsFromFormData($this->data);
@@ -64,7 +64,7 @@ class Login extends BaseLogin
 
             Auth::login($user, $this->data['remember'] ?? false);
 
-            return $user;
+            return app(\Filament\Auth\Http\Responses\Contracts\LoginResponse::class);
 
         } catch (QueryException $e) {
             Notification::make()
