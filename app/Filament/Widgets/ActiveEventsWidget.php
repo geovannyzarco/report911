@@ -27,36 +27,14 @@ class ActiveEventsWidget extends BaseWidget
     // Polling desactivado: la query sobre 6M+ filas es costosa
     protected static string|false $pollingInterval = false;
 
-    /**
-     * Calcula el tiempo transcurrido en formato legible (Xh Xm, Xmin, etc.)
-     */
-    private function formatElapsed(\DateTimeInterface $creationTime): string
-    {
-        $minutes = Carbon::now()->diffInMinutes($creationTime);
-
-        if ($minutes < 60) {
-            return "{$minutes}min";
-        }
-
-        $hours = floor($minutes / 60);
-        $mins = $minutes % 60;
-
-        if ($hours < 24) {
-            return "{$hours}h {$mins}m";
-        }
-
-        $days = floor($hours / 24);
-        $hoursRemaining = $hours % 24;
-
-        return "{$days}d {$hoursRemaining}h";
-    }
+    protected int|string|array $columnSpan = 'full';
 
     public function table(Table $table): Table
     {
         // Consulta raw con NOLOCK para evitar bloqueos contra el CAD
         // LEFT JOIN a Responses/ResponseTypes para obtener el Tipo de Evento
         // COALESCE toma el primer ResponseType disponible del incidente
-        // DATEDIFF calcula minutos transcurridos desde creacion hasta ahora
+        // DATEDIFF calcula segundos transcurridos desde creacion hasta ahora (GETDATE)
         // ORDER BY CreationTime ASC: los mas antiguos primero (mas tiempo sin cerrar)
         $hoy = Carbon::today()->format('Ymd');
 
@@ -67,7 +45,7 @@ class ActiveEventsWidget extends BaseWidget
                 'Incidents.CreationTime',
                 'st.Name as Estado',
                 DB::raw("COALESCE((SELECT TOP 1 rt.Name FROM Responses r2 WITH (NOLOCK) INNER JOIN ResponseTypes rt WITH (NOLOCK) ON r2.ResponseType = rt.OID WHERE r2.Incident = Incidents.OID), 'Sin Tipo') as TipoEvento"),
-                DB::raw('DATEDIFF(minute, Incidents.CreationTime, GETDATE()) as MinutosTranscurridos'),
+                DB::raw('DATEDIFF(second, Incidents.CreationTime, GETDATE()) as SegundosTranscurridos'),
             ])
             ->leftJoin('Statuses as st', 'Incidents.Status', '=', 'st.OID')
             ->whereNotIn('Incidents.Status', [6, 7, 8])
@@ -118,17 +96,28 @@ class ActiveEventsWidget extends BaseWidget
                         default => 'gray',
                     }),
 
-                // Columna 5: Tiempo transcurrido calculado desde creacion
-                Tables\Columns\TextColumn::make('MinutosTranscurridos')
+                // Columna 5: Tiempo transcurrido formateado en 00:00:00
+                Tables\Columns\TextColumn::make('SegundosTranscurridos')
                     ->label('Tiempo')
-                    ->formatStateUsing(function (int $state): string {
-                        return $this->formatElapsed(Carbon::now()->subMinutes($state));
+                    ->formatStateUsing(function ($state): string {
+                        $seconds = (int) $state;
+                        // Si por algún motivo de zona horaria da negativo, lo marcamos en 0.
+                        if ($seconds < 0) {
+                            $seconds = 0;
+                        }
+
+                        $hours = floor($seconds / 3600);
+                        $minutes = floor(($seconds % 3600) / 60);
+                        $secs = $seconds % 60;
+
+                        return sprintf('%02d:%02d:%02d', $hours, $minutes, $secs);
                     })
-                    ->color(function (int $state): string {
-                        if ($state >= 120) {
+                    ->color(function ($state): string {
+                        $seconds = (int) $state;
+                        if ($seconds >= 7200) { // 2 horas
                             return 'danger';
                         }
-                        if ($state >= 60) {
+                        if ($seconds >= 3600) { // 1 hora
                             return 'warning';
                         }
 
