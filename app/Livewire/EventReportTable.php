@@ -241,12 +241,82 @@ class EventReportTable extends Component
 
         $desde = $this->fechaDesde;
         $hasta = $this->fechaHasta;
+        $buscarSoloPorEvento = empty($this->fechaDesde) && empty($this->fechaHasta) && ! empty($this->busqueda);
 
         $orderField = 'le.[NUMERO_SECUENCIA]';
         if ($this->sortColumn === 'tiempo') {
             $orderField = 'CASE WHEN le.HoraCierre >= le.[FECHA_CREACION] THEN DATEDIFF(SECOND, le.[FECHA_CREACION], le.HoraCierre) ELSE 0 END';
         }
         $direction = strtoupper($this->sortDirection) === 'DESC' ? 'DESC' : 'ASC';
+
+        // Cuando se busca solo por numero de evento, se consulta directamente sin filtro de fechas
+        if ($buscarSoloPorEvento) {
+            // El numero puede venir del widget "Incidentes Activos" (contador corrido del Incident
+            // ej: SE911:2026:09:03:287649) o del formato Responses (secuencia diaria ej: SE911:2026:09:03:0001).
+            // Se extrae la ultima parte numerica y la fecha para buscar tambien en Incidents.SequenceNumber.
+            $partes = explode(':', $this->busqueda);
+            $ultimaParte = trim((string) end($partes));
+
+            // Extrae la parte YYYYMMDD (sin separadores) del numero SE911:AAAA:AA:AA:NNNN (indices 1,2,3)
+            // y se inserta como literal SQL, ya que el binding de datetime falla con @@LANGUAGE = Español.
+            $fechaSql = '';
+            if (count($partes) >= 4) {
+                $fechaSql = $partes[1].$partes[2].$partes[3];
+            }
+
+            $query = "
+                WITH cte_LlamadaEvento AS (
+                    SELECT a.Incident, a.ResponseType, a.SequenceNumber AS [NUMERO_SECUENCIA],
+                        a.OID AS ResponseOID, g.Name AS [TIPO_RESPUESTA],
+                        a.CreationTime AS [FECHA_CREACION], i.Agent AS IncidentAgentOID,
+                        CASE WHEN a.Status = 7 THEN a.StatusTime ELSE NULL END AS HoraCierre,
+                        MIN(c.CreationTime) AS [HORA_LLAMADA_calls]
+                    FROM Responses AS a WITH (NOLOCK)
+                    INNER JOIN Incidents AS i WITH (NOLOCK) ON a.Incident = i.OID
+                    INNER JOIN ResponseTypes AS g WITH (NOLOCK) ON g.OID = a.ResponseType
+                    LEFT JOIN Calls c WITH (NOLOCK) ON c.Incident = a.Incident
+                    WHERE a.SequenceNumber LIKE ?
+                        OR (i.SequenceNumber LIKE ? AND (i.CreationTime >= '{$fechaSql}' AND i.CreationTime < DATEADD(DAY, 1, '{$fechaSql}')))
+                    GROUP BY a.Incident, a.ResponseType, a.SequenceNumber, a.OID, g.Name, a.CreationTime, i.Agent, a.Status, a.StatusTime
+                ),
+                cte_tiempos AS (
+                    SELECT a.ResponseOID,
+                        MAX(CASE WHEN c.Name = 'Despachado' THEN am.StatusTime END) AS [Despachado],
+                        MAX(CASE WHEN c.Name = 'En Sitio' THEN am.StatusTime END) AS [En Sitio],
+                        MAX(CASE WHEN c.Name = 'Terminado' THEN am.StatusTime END) AS [Terminado],
+                        MAX(CASE WHEN c.Name = 'Despachado' THEN am.Agent END) AS DespachadorOID
+                    FROM cte_LlamadaEvento a
+                    INNER JOIN AssignModif am WITH (NOLOCK) ON am.Response = a.ResponseOID
+                    INNER JOIN Statuses c WITH (NOLOCK) ON c.OID = am.ResourceStatus
+                    GROUP BY a.ResponseOID
+                )
+                SELECT
+                    le.[NUMERO_SECUENCIA] AS [Numero de Evento],
+                    le.[TIPO_RESPUESTA] AS [Tipo de Evento],
+                    COALESCE(ag_tel.Firstname + ' ' + ag_tel.Lastname, 'Desconocido') AS [Telefonista],
+                    COALESCE(ag_dsp.Firstname + ' ' + ag_dsp.Lastname, 'Desconocido') AS [Despachador],
+                    CAST(le.[HORA_LLAMADA_calls] AS TIME(0)) AS [Hora Llamada],
+                    CAST(le.[FECHA_CREACION] AS TIME(0)) AS [Hora Creacion],
+                    CAST(tf.[Despachado] AS TIME(0)) AS [Hora Despacho],
+                    CAST(tf.[En Sitio] AS TIME(0)) AS [Hora En Sitio],
+                    CAST(tf.[Terminado] AS TIME(0)) AS [Hora Terminado],
+                    CAST(le.HoraCierre AS TIME(0)) AS [Hora Cierre],
+                    CONVERT(VARCHAR(8), DATEADD(SECOND,
+                        CASE WHEN le.HoraCierre >= le.[FECHA_CREACION]
+                        THEN DATEDIFF(SECOND, le.[FECHA_CREACION], le.HoraCierre) ELSE 0 END, 0), 108) AS [Tiempo Total]
+                FROM cte_LlamadaEvento le
+                LEFT JOIN cte_tiempos tf ON le.ResponseOID = tf.ResponseOID
+                LEFT JOIN Agents ag_tel WITH (NOLOCK) ON le.IncidentAgentOID = ag_tel.OID
+                LEFT JOIN Agents ag_dsp WITH (NOLOCK) ON tf.DespachadorOID = ag_dsp.OID
+                ORDER BY $orderField $direction
+            ";
+
+            $respuestaMatch = "%{$this->busqueda}%";
+            $incidenteMatch = filled($ultimaParte) ? "%:{$ultimaParte}" : '%:%';
+            $allResults = DB::connection('sqlsrv_cad')->select($query, [$respuestaMatch, $incidenteMatch]);
+
+            return array_values($allResults);
+        }
 
         $query = "
             WITH cte_Calls AS (

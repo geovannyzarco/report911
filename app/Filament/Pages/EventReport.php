@@ -56,14 +56,12 @@ class EventReport extends Page implements HasForms
                     ->schema([
                         DateTimePicker::make('fechaDesde')
                             ->label('Fecha Desde')
-                            ->required()
                             ->native(false)
                             ->displayFormat('d/m/Y H:i')
                             ->timezone('America/El_Salvador'),
 
                         DateTimePicker::make('fechaHasta')
                             ->label('Fecha Hasta')
-                            ->required()
                             ->native(false)
                             ->displayFormat('d/m/Y H:i')
                             ->timezone('America/El_Salvador'),
@@ -79,13 +77,21 @@ class EventReport extends Page implements HasForms
 
     public function buscar(): void
     {
-        $this->validate([
-            'fechaDesde' => 'required',
-            'fechaHasta' => 'required',
-        ]);
+        // Si no hay numero de evento, las fechas son obligatorias.
+        // Si hay numero de evento, se permite buscar sin fechas.
+        $tieneBusqueda = filled($this->busqueda);
+        $tieneDesde = filled($this->fechaDesde);
+        $tieneHasta = filled($this->fechaHasta);
 
-        $desde = Carbon::parse($this->fechaDesde, 'America/El_Salvador')->format('Ymd H:i:s');
-        $hasta = Carbon::parse($this->fechaHasta, 'America/El_Salvador')->format('Ymd H:i:s');
+        if (! $tieneBusqueda) {
+            $this->validate([
+                'fechaDesde' => 'required',
+                'fechaHasta' => 'required',
+            ]);
+        }
+
+        $desde = $tieneDesde ? Carbon::parse($this->fechaDesde, 'America/El_Salvador')->format('Ymd H:i:s') : '';
+        $hasta = $tieneHasta ? Carbon::parse($this->fechaHasta, 'America/El_Salvador')->format('Ymd H:i:s') : '';
 
         $this->busquedaEjecutada = true;
 
