@@ -61,7 +61,7 @@
                             <tr wire:click="verDetalle('{{ $row->{'Numero de Evento'} }}')"
                                 class="bg-white transition-colors hover:bg-gray-50 dark:bg-gray-900 dark:hover:bg-gray-800/50 cursor-pointer">
                                 <td class="px-4 py-3 text-sm text-gray-500 dark:text-gray-400 whitespace-nowrap">{{ $num }}</td>
-                                <td class="px-4 py-3 text-sm font-bold text-gray-950 dark:text-white whitespace-nowrap">{{ $row->{'Numero de Evento'} }}</td>
+                                <td class="px-4 py-3 text-sm font-bold text-gray-950 dark:text-white whitespace-nowrap">{{ $row->{'Numero Incidente Formateado'} }}</td>
                                 <td class="px-4 py-3 text-sm text-gray-600 dark:text-gray-400 min-w-[200px]">{{ $row->{'Tipo de Evento'} }}</td>
                                 <td class="px-4 py-3 text-sm text-gray-600 dark:text-gray-400 min-w-[150px]">{{ $row->Telefonista }}</td>
                                 <td class="px-4 py-3 text-sm text-gray-600 dark:text-gray-400 min-w-[150px]">{{ $row->Despachador }}</td>
@@ -134,7 +134,7 @@
     <x-filament::modal id="detalle-evento" width="7xl" :close-button="true">
         {{-- Encabezado del modal con el numero de evento --}}
         <x-slot name="heading">
-            Detalle del Evento: {{ $detalleEvento->{'Numero de Evento'} ?? '' }}
+            Detalle del Evento: {{ $detalleEvento->{'Numero Incidente Formateado'} ?? $detalleEvento->{'Numero de Evento'} ?? '' }}
         </x-slot>
 
         @if($detalleEvento)
@@ -145,7 +145,7 @@
                     <div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
                         <div>
                             <span class="font-medium text-gray-500 dark:text-gray-400">Numero de Evento:</span>
-                            <p class="text-gray-900 dark:text-white font-bold">{{ $detalleEvento->{'Numero de Evento'} }}</p>
+                            <p class="text-gray-900 dark:text-white font-bold">{{ $detalleEvento->{'Numero Incidente Formateado'} ?? $detalleEvento->{'Numero de Evento'} }}</p>
                         </div>
                         <div>
                             <span class="font-medium text-gray-500 dark:text-gray-400">Tipo de Evento:</span>

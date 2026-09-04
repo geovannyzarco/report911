@@ -2,6 +2,7 @@
 
 namespace App\Livewire;
 
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\On;
@@ -125,6 +126,7 @@ class EventReportTable extends Component
             )
             SELECT
                 r.SequenceNumber AS [Numero de Evento],
+                i.SequenceNumber AS [Numero Incidente],
                 rt.Name AS [Tipo de Evento],
                 pri.Name AS [Prioridad],
                 ag.Name AS [Agencia],
@@ -223,6 +225,22 @@ class EventReportTable extends Component
 
         // Asigna los resultados a las propiedades del componente para el modal
         $this->detalleEvento = $detalle[0] ?? null;
+
+        // Agrega el numero de incidente formateado (SE911:AAAA:MM:DD:NNNNNN) para mostrar en el modal
+        if ($this->detalleEvento) {
+            $incSeq = $this->detalleEvento->{'Numero Incidente'} ?? null;
+            $creacion = $this->detalleEvento->{'Hora Creacion'} ?? null;
+            $numero = null;
+            if ($incSeq !== null && $incSeq !== '') {
+                $partesInc = explode(':', (string) $incSeq);
+                $numero = end($partesInc);
+            }
+            $fecha = $creacion ? Carbon::parse($creacion) : now();
+            $this->detalleEvento->{'Numero Incidente Formateado'} = $numero !== null
+                ? "SE911:{$fecha->format('Y')}:{$fecha->format('m')}:{$fecha->format('d')}:{$numero}"
+                : ($this->detalleEvento->{'Numero de Evento'} ?? '');
+        }
+
         $this->notasEvento = $notas;
 
         // Abre el modal usando el evento de Filament (open-modal)
@@ -269,6 +287,7 @@ class EventReportTable extends Component
                     SELECT a.Incident, a.ResponseType, a.SequenceNumber AS [NUMERO_SECUENCIA],
                         a.OID AS ResponseOID, g.Name AS [TIPO_RESPUESTA],
                         a.CreationTime AS [FECHA_CREACION], i.Agent AS IncidentAgentOID,
+                        i.SequenceNumber AS [NUMERO_INCIDENTE_FULL],
                         CASE WHEN a.Status = 7 THEN a.StatusTime ELSE NULL END AS HoraCierre,
                         MIN(c.CreationTime) AS [HORA_LLAMADA_calls]
                     FROM Responses AS a WITH (NOLOCK)
@@ -277,7 +296,7 @@ class EventReportTable extends Component
                     LEFT JOIN Calls c WITH (NOLOCK) ON c.Incident = a.Incident
                     WHERE a.SequenceNumber LIKE ?
                         OR (i.SequenceNumber LIKE ? AND (i.CreationTime >= '{$fechaSql}' AND i.CreationTime < DATEADD(DAY, 1, '{$fechaSql}')))
-                    GROUP BY a.Incident, a.ResponseType, a.SequenceNumber, a.OID, g.Name, a.CreationTime, i.Agent, a.Status, a.StatusTime
+                    GROUP BY a.Incident, a.ResponseType, a.SequenceNumber, a.OID, g.Name, a.CreationTime, i.Agent, i.SequenceNumber, a.Status, a.StatusTime
                 ),
                 cte_tiempos AS (
                     SELECT a.ResponseOID,
@@ -292,11 +311,13 @@ class EventReportTable extends Component
                 )
                 SELECT
                     le.[NUMERO_SECUENCIA] AS [Numero de Evento],
+                    le.[NUMERO_INCIDENTE_FULL] AS [Numero Incidente],
                     le.[TIPO_RESPUESTA] AS [Tipo de Evento],
                     COALESCE(ag_tel.Firstname + ' ' + ag_tel.Lastname, 'Desconocido') AS [Telefonista],
                     COALESCE(ag_dsp.Firstname + ' ' + ag_dsp.Lastname, 'Desconocido') AS [Despachador],
                     CAST(le.[HORA_LLAMADA_calls] AS TIME(0)) AS [Hora Llamada],
                     CAST(le.[FECHA_CREACION] AS TIME(0)) AS [Hora Creacion],
+                    le.[FECHA_CREACION] AS [FECHA_CREACION_RAW],
                     CAST(tf.[Despachado] AS TIME(0)) AS [Hora Despacho],
                     CAST(tf.[En Sitio] AS TIME(0)) AS [Hora En Sitio],
                     CAST(tf.[Terminado] AS TIME(0)) AS [Hora Terminado],
@@ -315,7 +336,7 @@ class EventReportTable extends Component
             $incidenteMatch = filled($ultimaParte) ? "%:{$ultimaParte}" : '%:%';
             $allResults = DB::connection('sqlsrv_cad')->select($query, [$respuestaMatch, $incidenteMatch]);
 
-            return array_values($allResults);
+            return array_values($this->formatearNumerosIncidente($allResults));
         }
 
         $query = "
@@ -332,6 +353,7 @@ class EventReportTable extends Component
                 SELECT a.Incident, a.ResponseType, a.SequenceNumber AS [NUMERO_SECUENCIA],
                     a.OID AS ResponseOID, g.Name AS [TIPO_RESPUESTA], d.[HORA_LLAMADA_calls],
                     a.CreationTime AS [FECHA_CREACION], i.Agent AS IncidentAgentOID,
+                    i.SequenceNumber AS [NUMERO_INCIDENTE_FULL],
                     CASE WHEN a.Status = 7 THEN a.StatusTime ELSE NULL END AS HoraCierre
                 FROM Responses AS a WITH (NOLOCK)
                 INNER JOIN cte_Calls AS d ON d.Incident = a.Incident
@@ -352,11 +374,13 @@ class EventReportTable extends Component
             )
             SELECT
                 le.[NUMERO_SECUENCIA] AS [Numero de Evento],
+                le.[NUMERO_INCIDENTE_FULL] AS [Numero Incidente],
                 le.[TIPO_RESPUESTA] AS [Tipo de Evento],
                 COALESCE(ag_tel.Firstname + ' ' + ag_tel.Lastname, 'Desconocido') AS [Telefonista],
                 COALESCE(ag_dsp.Firstname + ' ' + ag_dsp.Lastname, 'Desconocido') AS [Despachador],
                 CAST(le.[HORA_LLAMADA_calls] AS TIME(0)) AS [Hora Llamada],
                 CAST(le.[FECHA_CREACION] AS TIME(0)) AS [Hora Creacion],
+                le.[FECHA_CREACION] AS [FECHA_CREACION_RAW],
                 CAST(tf.[Despachado] AS TIME(0)) AS [Hora Despacho],
                 CAST(tf.[En Sitio] AS TIME(0)) AS [Hora En Sitio],
                 CAST(tf.[Terminado] AS TIME(0)) AS [Hora Terminado],
@@ -379,7 +403,45 @@ class EventReportTable extends Component
             });
         }
 
-        return array_values($allResults);
+        return array_values($this->formatearNumerosIncidente($allResults));
+    }
+
+    /**
+     * Convierte el SequenceNumber compuesto del Incident (ej: 02:03:287649) al formato
+     * SE911:AAAA:MM:DD:NNNNNN usado por el widget "Incidentes Activos sin Cerrar".
+     * Se anade la propiedad "Numero Incidente Formateado" a cada fila.
+     *
+     * @param  array  $rows  Resultados crudos de la consulta
+     * @return array Filas con la propiedad formateada
+     */
+    protected function formatearNumerosIncidente(array $rows): array
+    {
+        foreach ($rows as $row) {
+            $incidentSeq = $row->{'Numero Incidente'} ?? null;
+
+            // Determina la fecha a usar: se toma de FECHA_CREACION_RAW (datetime completo del evento).
+            $fecha = null;
+            if (isset($row->{'FECHA_CREACION_RAW'}) && str_contains((string) $row->{'FECHA_CREACION_RAW'}, '-')) {
+                $fecha = Carbon::parse($row->{'FECHA_CREACION_RAW'});
+            }
+
+            $numero = null;
+            if ($incidentSeq !== null && $incidentSeq !== '') {
+                $partes = explode(':', (string) $incidentSeq);
+                $numero = end($partes);
+            }
+
+            if ($numero !== null) {
+                $anio = $fecha ? $fecha->format('Y') : date('Y');
+                $mes = $fecha ? $fecha->format('m') : date('m');
+                $dia = $fecha ? $fecha->format('d') : date('d');
+                $row->{'Numero Incidente Formateado'} = "SE911:{$anio}:{$mes}:{$dia}:{$numero}";
+            } else {
+                $row->{'Numero Incidente Formateado'} = $row->{'Numero de Evento'};
+            }
+        }
+
+        return $rows;
     }
 
     #[Computed]

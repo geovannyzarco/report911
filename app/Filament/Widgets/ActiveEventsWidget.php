@@ -3,6 +3,8 @@
 namespace App\Filament\Widgets;
 
 use App\Models\Cad\Incident;
+use BezhanSalleh\FilamentShield\Traits\HasWidgetShield;
+use Filament\Actions\Action;
 use Filament\Tables;
 use Filament\Tables\Table;
 use Filament\Widgets\TableWidget as BaseWidget;
@@ -15,10 +17,11 @@ use Illuminate\Support\Facades\DB;
  * Descripcion: Muestra los incidentes activos ordenados por tiempo abierto (mayor primero).
  * Formato del numero de evento: SE911:AAAA:MM:DD:NNNN
  * Columnas: Evento, Tipo de Evento, Hora Creacion, Estado, Tiempo Transcurrido.
+ * Accion de fila: redirige al Reporte de Eventos con el numero de evento pre-cargado.
  */
 class ActiveEventsWidget extends BaseWidget
 {
-    use \BezhanSalleh\FilamentShield\Traits\HasWidgetShield;
+    use HasWidgetShield;
 
     protected static ?string $heading = 'Incidentes Activos sin Cerrar';
 
@@ -56,7 +59,7 @@ class ActiveEventsWidget extends BaseWidget
             ->orderByRaw('Incidents.CreationTime ASC');
 
         return $table
-            ->query(fn() => $query)
+            ->query(fn () => $query)
             ->columns([
                 // Columna 1: Numero de evento formateado SE911:AAAA:MM:DD:NNNN
                 // SequenceNumber de la DB es compound (ej: "00:25:277737")
@@ -89,7 +92,7 @@ class ActiveEventsWidget extends BaseWidget
                 Tables\Columns\TextColumn::make('Estado')
                     ->label('Estado')
                     ->badge()
-                    ->color(fn(string $state): string => match (true) {
+                    ->color(fn (string $state): string => match (true) {
                         str_contains($state, 'En Ruta') => 'warning',
                         str_contains($state, 'En Sitio') => 'danger',
                         str_contains($state, 'Despachado') => 'info',
@@ -124,6 +127,25 @@ class ActiveEventsWidget extends BaseWidget
                         return 'success';
                     })
                     ->weight('bold'),
+            ])
+            ->actions([
+                // Accion de fila: abre el Reporte de Eventos con el numero de evento pre-cargado.
+                // El numero formateado SE911:AAAA:MM:DD:NNNN se pasa como query param ?busqueda=
+                // y EventReport::mount() lo detecta y ejecuta la busqueda automaticamente.
+                Action::make('ver_reporte')
+                    ->label('Ver en Reporte')
+                    ->icon('heroicon-m-document-magnifying-glass')
+                    ->color('primary')
+                    ->url(function ($record): string {
+                        $date = Carbon::parse($record->CreationTime);
+                        $parts = explode(':', $record->SequenceNumber);
+                        $numero = end($parts);
+                        $eventoFormateado = "SE911:{$date->format('Y:m:d')}:{$numero}";
+
+                        // Genera la URL de la pagina EventReport con el numero de evento como parametro
+                        return route('filament.monitoreo.pages.event-report', ['busqueda' => $eventoFormateado]);
+                    })
+                    ->openUrlInNewTab(false),
             ])
             // Sin paginacion: muestra todos los activos del dia
             ->paginated([5, 10, 50, 100]);

@@ -15,6 +15,8 @@ use Illuminate\Support\Carbon;
  * Page: EventReport
  * Nombre: Reporte de Eventos
  * Descripcion: Pagina con filtros de fecha/hora que muestra eventos del CAD en una tabla Livewire paginada.
+ * Soporta busqueda por rango de fechas (buscarPorFecha) y por numero de evento (buscarPorEvento).
+ * Tambien acepta el query param ?busqueda= para pre-cargar desde el widget de incidentes activos.
  */
 class EventReport extends Page implements HasForms
 {
@@ -46,12 +48,26 @@ class EventReport extends Page implements HasForms
 
     public bool $busquedaEjecutada = false;
 
+    /**
+     * Si el visitante llega con ?busqueda=SE911:... en la URL (desde el widget de
+     * Incidentes Activos sin Cerrar), pre-carga el campo y ejecuta la busqueda automaticamente.
+     */
+    public function mount(): void
+    {
+        $paramBusqueda = request()->query('busqueda', '');
+
+        if (filled($paramBusqueda)) {
+            $this->busqueda = $paramBusqueda;
+            $this->buscarPorEvento();
+        }
+    }
+
     public function form(Schema $form): Schema
     {
         return $form
             ->schema([
                 Section::make('Filtros de Busqueda')
-                    ->description('Selecciona un rango de fechas para consultar los eventos')
+                    ->description('Selecciona un rango de fechas o ingresa el numero de evento')
                     ->icon('heroicon-m-funnel')
                     ->schema([
                         DateTimePicker::make('fechaDesde')
@@ -68,33 +84,47 @@ class EventReport extends Page implements HasForms
 
                         Forms\Components\TextInput::make('busqueda')
                             ->label('Buscar por Numero de Evento')
-                            ->placeholder('Ej: 279215')
+                            ->placeholder('Ej: 279215 o SE911:2026:09:04:0001')
                             ->prefixIcon('heroicon-m-magnifying-glass'),
                     ])
                     ->columns(3),
             ]);
     }
 
-    public function buscar(): void
+    /**
+     * Busca eventos por rango de fechas.
+     * Las fechas Desde y Hasta son obligatorias.
+     */
+    public function buscarPorFecha(): void
     {
-        // Si no hay numero de evento, las fechas son obligatorias.
-        // Si hay numero de evento, se permite buscar sin fechas.
-        $tieneBusqueda = filled($this->busqueda);
-        $tieneDesde = filled($this->fechaDesde);
-        $tieneHasta = filled($this->fechaHasta);
+        $this->validate([
+            'fechaDesde' => 'required',
+            'fechaHasta' => 'required',
+        ]);
 
-        if (! $tieneBusqueda) {
-            $this->validate([
-                'fechaDesde' => 'required',
-                'fechaHasta' => 'required',
-            ]);
-        }
-
-        $desde = $tieneDesde ? Carbon::parse($this->fechaDesde, 'America/El_Salvador')->format('Ymd H:i:s') : '';
-        $hasta = $tieneHasta ? Carbon::parse($this->fechaHasta, 'America/El_Salvador')->format('Ymd H:i:s') : '';
+        $desde = Carbon::parse($this->fechaDesde, 'America/El_Salvador')->format('Ymd H:i:s');
+        $hasta = Carbon::parse($this->fechaHasta, 'America/El_Salvador')->format('Ymd H:i:s');
 
         $this->busquedaEjecutada = true;
 
-        $this->dispatch('search', $desde, $hasta, $this->busqueda ?? '');
+        // Envia busqueda vacia para que EventReportTable filtre solo por fechas
+        $this->dispatch('search', $desde, $hasta, '');
+    }
+
+    /**
+     * Busca un evento especifico por numero de evento (sin requerir fechas).
+     */
+    public function buscarPorEvento(): void
+    {
+        $this->validate([
+            'busqueda' => 'required',
+        ], [
+            'busqueda.required' => 'Ingresa el numero de evento.',
+        ]);
+
+        $this->busquedaEjecutada = true;
+
+        // Envia fechas vacias para que EventReportTable active la ruta de busqueda por evento
+        $this->dispatch('search', '', '', $this->busqueda);
     }
 }
