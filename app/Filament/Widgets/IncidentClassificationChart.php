@@ -3,6 +3,7 @@
 namespace App\Filament\Widgets;
 
 use App\Services\CadReportService;
+use BezhanSalleh\FilamentShield\Traits\HasWidgetShield;
 use Filament\Widgets\ChartWidget;
 
 /**
@@ -16,13 +17,13 @@ use Filament\Widgets\ChartWidget;
  */
 class IncidentClassificationChart extends ChartWidget
 {
-    use \BezhanSalleh\FilamentShield\Traits\HasWidgetShield;
+    use HasWidgetShield;
 
     // Titulo del widget
     protected ?string $heading = 'Incidentes por tipo SIN CERRAR';
 
-    // Intervalo de polling: cada 30 segundos se re-ejecuta getData() via AJAX
-    protected ?string $pollingInterval = '30s';
+    // Intervalo de polling: cada 60 segundos se re-ejecuta getData() via AJAX
+    protected ?string $pollingInterval = '60s';
 
     // Altura de la grafica en pixeles
     protected ?string $maxHeight = '300';
@@ -30,7 +31,7 @@ class IncidentClassificationChart extends ChartWidget
     // Orden de visualizacion en el dashboard (1=primer widget)
     protected static ?int $sort = 3;
 
-    //protected int|string|array $columnSpan = 'full';
+    // protected int|string|array $columnSpan = 'full';
 
     /**
      * Obtiene los datos para la grafica de dona.

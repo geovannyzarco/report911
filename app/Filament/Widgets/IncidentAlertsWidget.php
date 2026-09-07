@@ -3,6 +3,7 @@
 namespace App\Filament\Widgets;
 
 use App\Services\CadReportService;
+use BezhanSalleh\FilamentShield\Traits\HasWidgetShield;
 use Filament\Widgets\StatsOverviewWidget;
 use Filament\Widgets\StatsOverviewWidget\Stat;
 
@@ -19,7 +20,7 @@ use Filament\Widgets\StatsOverviewWidget\Stat;
  */
 class IncidentAlertsWidget extends StatsOverviewWidget
 {
-    use \BezhanSalleh\FilamentShield\Traits\HasWidgetShield;
+    use HasWidgetShield;
 
     /**
      * Retorna el titulo que se muestra encima del widget en el dashboard.
@@ -34,11 +35,11 @@ class IncidentAlertsWidget extends StatsOverviewWidget
 
     /**
      * Retorna el intervalo de polling para refrescar los datos automaticamente.
-     * '30s' = cada 30 segundos Filament re-ejecuta getStats() via AJAX.
+     * '60s' = cada 60 segundos Filament re-ejecuta getStats() via AJAX (optimizado para reducir carga en CAD).
      */
     protected function getPollingInterval(): ?string
     {
-        return '30s';
+        return '60s';
     }
 
     /**

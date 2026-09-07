@@ -4,6 +4,7 @@ namespace App\Services;
 
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -198,7 +199,7 @@ class CadReportService
 
     /**
      * Resumen estadistico general: total de eventos, promedios, etc.
-     * Optimizado: ejecuta los 3 COUNTs en una sola query via UNION ALL.
+     * Optimizado: ejecuta los 3 COUNTs en una sola query via UNION ALL con cache de 30 segundos.
      */
     public function getResumenEstadistico(
         Carbon $desde,
@@ -206,136 +207,150 @@ class CadReportService
     ): array {
         $desdeStr = $this->sqlDate($desde);
         $hastaStr = $this->sqlDate($hasta->copy()->addDay());
+        $cacheKey = 'resumen_estadistico_'.$desdeStr;
 
-        // Una sola query que cuenta los 3 totales via UNION ALL
-        // NOLOCK evita bloqueos/deadlocks contra el CAD en produccion
-        $resultados = DB::connection('sqlsrv_cad')->select("
-            SELECT 'incidentes' as tipo, COUNT(*) as total FROM Incidents WITH (NOLOCK)
-            WHERE CreationTime >= '$desdeStr' AND CreationTime <= '$hastaStr'
-            AND (Deleted = 0 OR Deleted IS NULL)
-            UNION ALL
-            SELECT 'llamadas', COUNT(*) FROM Calls WITH (NOLOCK)
-            WHERE CreationTime >= '$desdeStr' AND CreationTime <= '$hastaStr'
-            AND (Deleted = 0 OR Deleted IS NULL)
-            UNION ALL
-            SELECT 'despachos', COUNT(*) FROM Responses WITH (NOLOCK)
-            WHERE CreationTime >= '$desdeStr' AND CreationTime <= '$hastaStr'
-        ");
+        return Cache::remember($cacheKey, 30, function () use ($desdeStr, $hastaStr) {
+            // Una sola query que cuenta los 3 totales via UNION ALL
+            // NOLOCK evita bloqueos/deadlocks contra el CAD en produccion
+            $resultados = DB::connection('sqlsrv_cad')->select("
+                SELECT 'incidentes' as tipo, COUNT(*) as total FROM Incidents WITH (NOLOCK)
+                WHERE CreationTime >= '$desdeStr' AND CreationTime <= '$hastaStr'
+                AND (Deleted = 0 OR Deleted IS NULL)
+                UNION ALL
+                SELECT 'llamadas', COUNT(*) FROM Calls WITH (NOLOCK)
+                WHERE CreationTime >= '$desdeStr' AND CreationTime <= '$hastaStr'
+                AND (Deleted = 0 OR Deleted IS NULL)
+                UNION ALL
+                SELECT 'despachos', COUNT(*) FROM Responses WITH (NOLOCK)
+                WHERE CreationTime >= '$desdeStr' AND CreationTime <= '$hastaStr'
+            ");
 
-        $map = collect($resultados)->pluck('total', 'tipo')->toArray();
+            $map = collect($resultados)->pluck('total', 'tipo')->toArray();
 
-        return [
-            'total_incidentes' => (int) ($map['incidentes'] ?? 0),
-            'total_llamadas' => (int) ($map['llamadas'] ?? 0),
-            'total_despachos' => (int) ($map['despachos'] ?? 0),
-        ];
+            return [
+                'total_incidentes' => (int) ($map['incidentes'] ?? 0),
+                'total_llamadas' => (int) ($map['llamadas'] ?? 0),
+                'total_despachos' => (int) ($map['despachos'] ?? 0),
+            ];
+        });
     }
 
     /**
      * Estadisticas de incidentes abiertos: sin despacho, sin cerrar, sin recursos asignados.
      * Estados del CAD: 1=Req_Despacho, 6=Terminado, 7=Cerrado.
-     * USA CTEs para calcular los 3 conteos en una sola pasada sobre Incidents.
+     * USA CTEs optimizados acotados al dia actual y con cache de 30 segundos.
      */
     public function getEstadisticasIncidentesAbiertos(): array
     {
         $hoy = Carbon::today()->format('Ymd');
+        $cacheKey = 'incidentes_abiertos_'.$hoy;
 
-        $resultado = DB::connection('sqlsrv_cad')->select("
-            WITH base AS (
-                SELECT i.OID, i.Status
-                FROM Incidents i WITH (NOLOCK)
-                WHERE (i.Deleted = 0 OR i.Deleted IS NULL)
-                AND i.CreationTime >= '$hoy'
-            ),
-            con_resp AS (
-                SELECT DISTINCT Incident FROM Responses WITH (NOLOCK)
-            ),
-            con_asign AS (
-                SELECT DISTINCT r.Incident
-                FROM Responses r WITH (NOLOCK)
-                INNER JOIN Assign a WITH (NOLOCK) ON a.Response = r.OID AND a.Active = 1
-            )
-            SELECT
-                (SELECT COUNT(*) FROM base b LEFT JOIN con_resp cr ON b.OID = cr.Incident WHERE cr.Incident IS NULL) as sin_despacho,
-                (SELECT COUNT(*) FROM base b WHERE b.Status NOT IN (6, 7)) as sin_cerrar,
-                (SELECT COUNT(*) FROM base b INNER JOIN con_resp cr ON b.OID = cr.Incident LEFT JOIN con_asign ca ON b.OID = ca.Incident WHERE ca.Incident IS NULL AND b.Status NOT IN (6, 7)) as sin_recursos
-        ")[0];
+        return Cache::remember($cacheKey, 30, function () use ($hoy) {
+            $resultado = DB::connection('sqlsrv_cad')->select("
+                WITH base AS (
+                    SELECT i.OID, i.Status
+                    FROM Incidents i WITH (NOLOCK)
+                    WHERE (i.Deleted = 0 OR i.Deleted IS NULL)
+                    AND i.CreationTime >= '$hoy'
+                ),
+                con_resp AS (
+                    SELECT DISTINCT Incident FROM Responses WITH (NOLOCK)
+                    WHERE CreationTime >= '$hoy'
+                ),
+                con_asign AS (
+                    SELECT DISTINCT r.Incident
+                    FROM Responses r WITH (NOLOCK)
+                    INNER JOIN Assign a WITH (NOLOCK) ON a.Response = r.OID AND a.Active = 1
+                    WHERE r.CreationTime >= '$hoy'
+                )
+                SELECT
+                    (SELECT COUNT(*) FROM base b LEFT JOIN con_resp cr ON b.OID = cr.Incident WHERE cr.Incident IS NULL) as sin_despacho,
+                    (SELECT COUNT(*) FROM base b WHERE b.Status NOT IN (6, 7)) as sin_cerrar,
+                    (SELECT COUNT(*) FROM base b INNER JOIN con_resp cr ON b.OID = cr.Incident LEFT JOIN con_asign ca ON b.OID = ca.Incident WHERE ca.Incident IS NULL AND b.Status NOT IN (6, 7)) as sin_recursos
+            ")[0];
 
-        return [
-            'sin_despacho' => (int) ($resultado->sin_despacho ?? 0),
-            'sin_cerrar' => (int) ($resultado->sin_cerrar ?? 0),
-            'sin_recursos' => (int) ($resultado->sin_recursos ?? 0),
-        ];
+            return [
+                'sin_despacho' => (int) ($resultado->sin_despacho ?? 0),
+                'sin_cerrar' => (int) ($resultado->sin_cerrar ?? 0),
+                'sin_recursos' => (int) ($resultado->sin_recursos ?? 0),
+            ];
+        });
     }
 
     /**
      * Cuenta incidentes no cerrados agrupados por tipo de respuesta (ResponseType).
-     * Convertido a raw SQL con NOLOCK para evitar deadlocks.
+     * Convertido a raw SQL con NOLOCK y cache de 30 segundos.
      *
      * @return array{labels: array<int, string>, data: array<int, int>}
      */
     public function getIncidentesPorClasificacion(): array
     {
         $hoy = Carbon::today()->format('Ymd');
+        $cacheKey = 'incidentes_clasificacion_'.$hoy;
 
-        $resultados = DB::connection('sqlsrv_cad')->select("
-            SELECT TOP 10 rt.Name as Tipo, COUNT(DISTINCT i.OID) as Total
-            FROM Responses r WITH (NOLOCK)
-            INNER JOIN ResponseTypes rt WITH (NOLOCK) ON r.ResponseType = rt.OID
-            INNER JOIN Incidents i WITH (NOLOCK) ON r.Incident = i.OID
-            WHERE i.Status NOT IN (6, 7)
-            AND (i.Deleted = 0 OR i.Deleted IS NULL)
-            AND i.CreationTime >= '$hoy'
-            GROUP BY rt.Name
-            ORDER BY Total DESC
-        ");
+        return Cache::remember($cacheKey, 30, function () use ($hoy) {
+            $resultados = DB::connection('sqlsrv_cad')->select("
+                SELECT TOP 10 rt.Name as Tipo, COUNT(DISTINCT i.OID) as Total
+                FROM Responses r WITH (NOLOCK)
+                INNER JOIN ResponseTypes rt WITH (NOLOCK) ON r.ResponseType = rt.OID
+                INNER JOIN Incidents i WITH (NOLOCK) ON r.Incident = i.OID
+                WHERE i.Status NOT IN (6, 7)
+                AND (i.Deleted = 0 OR i.Deleted IS NULL)
+                AND i.CreationTime >= '$hoy'
+                GROUP BY rt.Name
+                ORDER BY Total DESC
+            ");
 
-        $labels = [];
-        $data = [];
+            $labels = [];
+            $data = [];
 
-        foreach ($resultados as $row) {
-            $labels[] = $row->Tipo;
-            $data[] = (int) $row->Total;
-        }
+            foreach ($resultados as $row) {
+                $labels[] = $row->Tipo;
+                $data[] = (int) $row->Total;
+            }
 
-        return [
-            'labels' => $labels,
-            'data' => $data,
-        ];
+            return [
+                'labels' => $labels,
+                'data' => $data,
+            ];
+        });
     }
 
     /**
      * Cuenta incidentes de hoy agrupados por estado del despacho (Responses.Status).
-     * Retorna labels (nombres de estado) y data (cantidades).
+     * Con cache de 30 segundos.
      *
      * @return array{labels: array<int, string>, data: array<int, int>}
      */
     public function getIncidentesPorEstado(): array
     {
         $hoy = Carbon::today()->format('Ymd');
+        $cacheKey = 'incidentes_estado_'.$hoy;
 
-        $resultados = DB::connection('sqlsrv_cad')->select("
-            SELECT TOP 15 st.Name as Estado, COUNT(*) as Total
-            FROM Responses r WITH (NOLOCK)
-            INNER JOIN Incidents i WITH (NOLOCK) ON r.Incident = i.OID
-            INNER JOIN Statuses st WITH (NOLOCK) ON r.Status = st.OID
-            WHERE (i.Deleted = 0 OR i.Deleted IS NULL)
-            AND i.CreationTime >= '$hoy'
-            GROUP BY st.Name
-            ORDER BY Total DESC
-        ");
+        return Cache::remember($cacheKey, 30, function () use ($hoy) {
+            $resultados = DB::connection('sqlsrv_cad')->select("
+                SELECT TOP 15 st.Name as Estado, COUNT(*) as Total
+                FROM Responses r WITH (NOLOCK)
+                INNER JOIN Incidents i WITH (NOLOCK) ON r.Incident = i.OID
+                INNER JOIN Statuses st WITH (NOLOCK) ON r.Status = st.OID
+                WHERE (i.Deleted = 0 OR i.Deleted IS NULL)
+                AND i.CreationTime >= '$hoy'
+                GROUP BY st.Name
+                ORDER BY Total DESC
+            ");
 
-        $labels = [];
-        $data = [];
+            $labels = [];
+            $data = [];
 
-        foreach ($resultados as $row) {
-            $labels[] = $row->Estado;
-            $data[] = (int) $row->Total;
-        }
+            foreach ($resultados as $row) {
+                $labels[] = $row->Estado;
+                $data[] = (int) $row->Total;
+            }
 
-        return [
-            'labels' => $labels,
-            'data' => $data,
-        ];
+            return [
+                'labels' => $labels,
+                'data' => $data,
+            ];
+        });
     }
 }

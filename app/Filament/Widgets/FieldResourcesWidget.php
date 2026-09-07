@@ -3,6 +3,7 @@
 namespace App\Filament\Widgets;
 
 use App\Models\Cad\Resource;
+use BezhanSalleh\FilamentShield\Traits\HasWidgetShield;
 use Filament\Tables;
 use Filament\Tables\Table;
 use Filament\Widgets\TableWidget as BaseWidget;
@@ -19,7 +20,7 @@ use Filament\Widgets\TableWidget as BaseWidget;
  */
 class FieldResourcesWidget extends BaseWidget
 {
-    use \BezhanSalleh\FilamentShield\Traits\HasWidgetShield;
+    use HasWidgetShield;
 
     // Titulo del widget que se muestra en el dashboard
     protected static ?string $heading = 'Unidades en Campo';
@@ -112,7 +113,7 @@ class FieldResourcesWidget extends BaseWidget
             ->defaultSort('CodigoUnidad')
             // Paginacion: muestra 10, 25 o 50 registros por pagina
             ->paginated([10, 25, 50])
-            // Polling: cada 30 segundos re-ejecuta la query y actualiza solo esta tabla
-            ->poll('30s');
+            // Polling: cada 60 segundos re-ejecuta la query y actualiza solo esta tabla (optimizado)
+            ->poll('60s');
     }
 }

@@ -14,7 +14,20 @@
         </div>
 
         @if($this->total() > 0)
-            <div class="w-full overflow-x-auto rounded-xl border border-gray-200 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-900">
+            <div class="w-full relative overflow-x-auto rounded-xl border border-gray-200 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-900">
+                {{-- Indicador de carga: se muestra solo cuando la consulta tarda mas de 200ms
+                     (evita parpadeos en respuestas rapidas). Cubre la tabla con un overlay. --}}
+                <div wire:loading.delay wire:target="search, sortBy, goToPage, previousPage, nextPage, updatingPerPage, perPage, verDetalle"
+                     class="absolute inset-0 z-20 flex items-center justify-center bg-white/70 backdrop-blur-sm dark:bg-gray-900/70">
+                    <div class="flex flex-col items-center gap-3">
+                        <svg class="w-10 h-10 text-primary-600 animate-spin" fill="none" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+                        </svg>
+                        <span class="text-sm font-medium text-gray-600 dark:text-gray-300">Cargando eventos...</span>
+                    </div>
+                </div>
+
                 <table class="w-full text-start divide-y divide-gray-200 dark:divide-gray-700 table-auto min-w-max">
                     <thead class="bg-gray-50 dark:bg-gray-800/50">
                         <tr class="border-b border-gray-200 dark:border-gray-700">
@@ -385,7 +398,13 @@
                 </x-filament::section>
             </div>
         @else
-            <p class="text-sm text-gray-500 dark:text-gray-400 text-center py-8">Cargando informacion del evento...</p>
+            <div class="flex flex-col items-center justify-center gap-3 py-10 text-gray-500 dark:text-gray-400">
+                <svg class="w-8 h-8 text-primary-600 animate-spin" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+                </svg>
+                <p class="text-sm">Cargando informacion del evento...</p>
+            </div>
         @endif
     </x-filament::modal>
 </div>
