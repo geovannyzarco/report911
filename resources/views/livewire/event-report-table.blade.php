@@ -221,9 +221,17 @@
                     </div>
 
                     {{-- Mapa interactivo con Leaflet.js y OpenStreetMap --}}
+                    {{-- Las coordenadas (X=lng, Y=lat) y el texto del popup se guardan en
+                         atributos data-* porque el script del mapa se registra una sola vez
+                         al montar el componente y lee los datos aqui en cada apertura. --}}
                     @if($detalleEvento->{'Coordenada X'} && $detalleEvento->{'Coordenada Y'})
                         <div class="mt-4">
-                            <div id="mapa-evento" class="w-full h-[400px] rounded-lg border border-gray-200 dark:border-gray-700 z-0"></div>
+                            <div id="mapa-evento"
+                                 data-lat="{{ $detalleEvento->{'Coordenada Y'} }}"
+                                 data-lng="{{ $detalleEvento->{'Coordenada X'} }}"
+                                 data-evento="{{ $detalleEvento->{'Numero de Evento'} ?? '' }}"
+                                 data-direccion="{{ $detalleEvento->{'Direccion Completa'} ?? '' }}"
+                                 class="w-full h-[400px] rounded-lg border border-gray-200 dark:border-gray-700 z-0"></div>
                             <div class="mt-2 flex items-center gap-2">
                                 <a href="https://www.google.com/maps?q={{ $detalleEvento->{'Coordenada Y'} }},{{ $detalleEvento->{'Coordenada X'} }}" target="_blank" rel="noopener noreferrer"
                                    class="inline-flex items-center gap-1 text-sm text-primary-600 hover:text-primary-500 dark:text-primary-400">
@@ -232,34 +240,6 @@
                                 </a>
                             </div>
                         </div>
-                        <script>
-                            // Inicializa el mapa de Leaflet con las coordenadas del evento
-                            // Se ejecuta via Livewire event para garantizar que el DOM ya esta renderizado
-                            document.addEventListener('livewire:initialized', function () {
-                                Livewire.on('mapa-evento-listo', function () {
-                                    setTimeout(function () {
-                                        var el = document.getElementById('mapa-evento');
-                                        if (!el || el._mapInit) return;
-                                        el._mapInit = true;
-                                        var lat = {{ $detalleEvento->{'Coordenada Y'} }};
-                                        var lng = {{ $detalleEvento->{'Coordenada X'} }};
-                                        if (isNaN(lat) || isNaN(lng) || (lat === 0 && lng === 0)) {
-                                            el.innerHTML = '<div class="flex items-center justify-center h-full text-gray-500">Coordenadas no disponibles</div>';
-                                            return;
-                                        }
-                                        var mapa = L.map(el, { zoomControl: true }).setView([lat, lng], 16);
-                                        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                                            attribution: '&copy; OpenStreetMap contributors',
-                                            maxZoom: 19
-                                        }).addTo(mapa);
-                                        L.marker([lat, lng]).addTo(mapa)
-                                            .bindPopup('<strong>{{ addslashes($detalleEvento->{'Numero de Evento'} ?? '') }}</strong><br>{{ addslashes($detalleEvento->{'Direccion Completa'} ?? '') }}')
-                                            .openPopup();
-                                        setTimeout(function () { mapa.invalidateSize(); }, 300);
-                                    }, 150);
-                                });
-                            });
-                        </script>
                     @endif
                 </x-filament::section>
 
@@ -408,3 +388,57 @@
         @endif
     </x-filament::modal>
 </div>
+
+{{-- Inicializacion del mapa Leaflet/OSM del detalle de evento.
+     El listener se registra aqui (raiz del componente) y NO dentro del modal:
+     Livewire inyecta el contenido del modal despues de la primera carga y los
+     <script> inyectados por morph no se ejecutan; ademas 'livewire:initialized'
+     solo se dispara una vez al cargar la pagina. Los datos (lat/lng/numero/
+     direccion) se leen del DOM en el momento del evento. --}}
+@script
+<script>
+    Livewire.on('mapa-evento-listo', () => {
+        // Retardo minimo para garantizar que el contenido del modal ya esta en el DOM
+        setTimeout(() => {
+            const el = document.getElementById('mapa-evento');
+            if (!el) return;
+
+            const lat = parseFloat(el.dataset.lat);
+            const lng = parseFloat(el.dataset.lng);
+
+            // Coordenadas ausentes o invalidas: se muestra un aviso en lugar del mapa
+            if (isNaN(lat) || isNaN(lng) || (lat === 0 && lng === 0)) {
+                el.innerHTML = '<div class="flex items-center justify-center h-full text-gray-500">Coordenadas no disponibles</div>';
+                return;
+            }
+
+            // Si se abrio otro evento antes, se destruye el mapa previo para recrearlo
+            if (el._map) {
+                el._map.remove();
+                el._map = null;
+            }
+
+            const mapa = L.map(el, { zoomControl: true }).setView([lat, lng], 16);
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '&copy; OpenStreetMap contributors',
+                maxZoom: 19
+            }).addTo(mapa);
+
+            // Escapa el texto del popup para insertarlo como HTML seguro
+            const escapar = (valor) => {
+                const d = document.createElement('div');
+                d.textContent = valor;
+                return d.innerHTML;
+            };
+
+            L.marker([lat, lng]).addTo(mapa)
+                .bindPopup('<strong>' + escapar(el.dataset.evento || '') + '</strong><br>' + escapar(el.dataset.direccion || ''))
+                .openPopup();
+
+            el._map = mapa;
+            // Recalcula el tamaño del mapa al abrir el modal (si estuvo oculto tenia 0x0)
+            setTimeout(() => mapa.invalidateSize(), 300);
+        }, 150);
+    });
+</script>
+@endscript

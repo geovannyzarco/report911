@@ -16,7 +16,7 @@ use Illuminate\Support\Facades\DB;
  * Nombre: Incidentes Activos sin Cerrar
  * Descripcion: Muestra los incidentes activos ordenados por tiempo abierto (mayor primero).
  * Formato del numero de evento: SE911:AAAA:MM:DD:NNNN
- * Columnas: Evento, Tipo de Evento, Hora Creacion, Estado, Tiempo Transcurrido.
+ * Columnas: Evento, Tipo de Evento, Hora Creacion, Estado, Tiempo (duracion cerrada, igual al reporte).
  * Accion de fila: redirige al Reporte de Eventos con el numero de evento pre-cargado.
  */
 class ActiveEventsWidget extends BaseWidget
@@ -37,7 +37,8 @@ class ActiveEventsWidget extends BaseWidget
         // Consulta raw con NOLOCK para evitar bloqueos contra el CAD
         // LEFT JOIN a Responses/ResponseTypes para obtener el Tipo de Evento
         // COALESCE toma el primer ResponseType disponible del incidente
-        // DATEDIFF calcula segundos transcurridos desde creacion hasta ahora (GETDATE)
+        // La columna SegundosTranscurridos es la duracion cerrada del primer response
+        // (mismo calculo que el "Tiempo Total" del reporte de eventos)
         // ORDER BY CreationTime ASC: los mas antiguos primero (mas tiempo sin cerrar)
         $hoy = Carbon::today()->format('Ymd');
 
@@ -48,7 +49,17 @@ class ActiveEventsWidget extends BaseWidget
                 'Incidents.CreationTime',
                 'st.Name as Estado',
                 DB::raw("COALESCE((SELECT TOP 1 rt.Name FROM Responses r2 WITH (NOLOCK) INNER JOIN ResponseTypes rt WITH (NOLOCK) ON r2.ResponseType = rt.OID WHERE r2.Incident = Incidents.OID), 'Sin Tipo') as TipoEvento"),
-                DB::raw('DATEDIFF(second, Incidents.CreationTime, GETDATE()) as SegundosTranscurridos'),
+                // Duracion cerrada del primer response del incidente, igual que el campo
+                // "Tiempo Total" del reporte de eventos. Si el response esta cerrado
+                // (Status = 7), es la diferencia entre su creacion y su cierre; si no, 0.
+                // Reemplaza al anterior "tiempo transcurrido en vivo" (DATEDIFF vs GETDATE)
+                // para que el widget coincida exactamente con lo que muestra el reporte.
+                DB::raw('ISNULL((SELECT TOP 1
+                        CASE WHEN r.Status = 7 AND r.StatusTime >= r.CreationTime
+                             THEN DATEDIFF(SECOND, r.CreationTime, r.StatusTime) ELSE 0 END
+                     FROM Responses r WITH (NOLOCK)
+                     WHERE r.Incident = Incidents.OID
+                     ORDER BY r.CreationTime, r.OID), 0) as SegundosDuracion'),
             ])
             ->leftJoin('Statuses as st', 'Incidents.Status', '=', 'st.OID')
             ->whereNotIn('Incidents.Status', [6, 7, 8])
@@ -99,8 +110,8 @@ class ActiveEventsWidget extends BaseWidget
                         default => 'gray',
                     }),
 
-                // Columna 5: Tiempo transcurrido formateado en 00:00:00
-                Tables\Columns\TextColumn::make('SegundosTranscurridos')
+                // Columna 5: Duracion del response (igual al reporte) formateada en 00:00:00
+                Tables\Columns\TextColumn::make('SegundosDuracion')
                     ->label('Tiempo')
                     ->formatStateUsing(function ($state): string {
                         $seconds = (int) $state;
