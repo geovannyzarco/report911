@@ -14,7 +14,7 @@ use Illuminate\Support\Facades\DB;
 /**
  * Widget: ActiveEventsWidget
  * Nombre: Incidentes Activos sin Cerrar
- * Descripcion: Muestra los incidentes activos ordenados por tiempo abierto (mayor primero).
+ * Descripcion: Muestra los incidentes activos ordenados por tiempo (el de mayor duracion primero).
  * Formato del numero de evento: SE911:AAAA:MM:DD:NNNN
  * Columnas: Evento, Tipo de Evento, Hora Creacion, Estado, Tiempo (duracion cerrada, igual al reporte).
  * Accion de fila: redirige al Reporte de Eventos con el numero de evento pre-cargado.
@@ -27,8 +27,9 @@ class ActiveEventsWidget extends BaseWidget
 
     protected static ?int $sort = 4;
 
-    // Polling desactivado: la query sobre 6M+ filas es costosa
-    protected static string|false $pollingInterval = false;
+    // Polling cada 60s: re-ejecuta la query para reflejar incidentes nuevos/cerrados
+    // (medicion 2026-09-08: ~0.22-0.38s por ejecucion sobre las tablas del CAD)
+    protected static string|false $pollingInterval = '60s';
 
     protected int|string|array $columnSpan = 'full';
 
@@ -37,9 +38,11 @@ class ActiveEventsWidget extends BaseWidget
         // Consulta raw con NOLOCK para evitar bloqueos contra el CAD
         // LEFT JOIN a Responses/ResponseTypes para obtener el Tipo de Evento
         // COALESCE toma el primer ResponseType disponible del incidente
-        // La columna SegundosTranscurridos es la duracion cerrada del primer response
+        // La columna SegundosDuracion es la duracion cerrada del primer response
         // (mismo calculo que el "Tiempo Total" del reporte de eventos)
-        // ORDER BY CreationTime ASC: los mas antiguos primero (mas tiempo sin cerrar)
+        // ORDER BY SegundosDuracion DESC: el evento con mas tiempo primero;
+        // como desempate CreationTime ASC (mas antiguo primero), tal como se indica
+        // en la cabecera del widget ("ordenados por tiempo, mayor primero")
         $hoy = Carbon::today()->format('Ymd');
 
         $query = Incident::query()
@@ -67,6 +70,7 @@ class ActiveEventsWidget extends BaseWidget
                 $q->where('Incidents.Deleted', 0)->orWhereNull('Incidents.Deleted');
             })
             ->whereRaw("Incidents.CreationTime >= '$hoy'")
+            ->orderBy('SegundosDuracion', 'desc')
             ->orderByRaw('Incidents.CreationTime ASC');
 
         return $table
