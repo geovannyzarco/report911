@@ -3,6 +3,7 @@
 namespace App\Filament\Widgets;
 
 use App\Services\CadReportService;
+use BezhanSalleh\FilamentShield\Traits\HasWidgetShield;
 use Filament\Widgets\StatsOverviewWidget;
 use Filament\Widgets\StatsOverviewWidget\Stat;
 use Illuminate\Support\Carbon;
@@ -17,7 +18,7 @@ use Illuminate\Support\Carbon;
  */
 class StatsOverview extends StatsOverviewWidget
 {
-    use \BezhanSalleh\FilamentShield\Traits\HasWidgetShield;
+    use HasWidgetShield;
 
     /**
      * Define las tres tarjetas de estadisticas que se muestran en el widget.
@@ -62,7 +63,7 @@ class StatsOverview extends StatsOverviewWidget
             /* Stat::make('Despachos Hoy', number_format($resumen['total_despachos']))
                 ->description('Total de despachos realizados hoy')
                 ->descriptionIcon('heroicon-m-truck')                          // Icono de camion/boton
-                ->color('warning'),  */                                          // Color naranja/amarillo
+                ->color('warning'),  */ // Color naranja/amarillo
         ];
     }
 }

@@ -3,6 +3,7 @@
 namespace App\Filament\Widgets;
 
 use App\Services\CadReportService;
+use BezhanSalleh\FilamentShield\Traits\HasWidgetShield;
 use Filament\Widgets\ChartWidget;
 
 /**
@@ -14,7 +15,7 @@ use Filament\Widgets\ChartWidget;
  */
 class IncidentsByStatusChart extends ChartWidget
 {
-    use \BezhanSalleh\FilamentShield\Traits\HasWidgetShield;
+    use HasWidgetShield;
 
     // Titulo del widget
     protected ?string $heading = 'Estado de Despachos (Hoy)';

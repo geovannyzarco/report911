@@ -2,6 +2,7 @@
 
 namespace App\Livewire;
 
+use App\Services\CadReportService;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
@@ -91,174 +92,22 @@ class EventReportTable extends Component
 
     /**
      * Abre el modal de detalles con la informacion completa del evento.
-     * Ejecuta dos queries SQL Server: uno para datos del evento y otro para las notas.
+     * Delega en CadReportService para obtener el detalle y las notas (mismo codigo que
+     * usa el modal del widget de Incidentes Activos), evitando duplicar las queries.
      *
      * @param  string  $numeroEvento  Numero de secuencia del evento (ej: SE911:2026:07:01:0067)
      */
     public function verDetalle(string $numeroEvento): void
     {
-        // Clave de cache por evento para evitar recalcular los datos pesados
-        // del detalle y las notas cada vez que se abre el modal. Un evento
-        // cerrado no cambia, por lo que el TTL de 10 minutos es seguro.
-        $cacheClave = 'evento_detalle_'.preg_replace('/[^a-zA-Z0-9_:]/', '', $numeroEvento);
+        // Detalle y notas del evento desde el servicio compartido; el servicio los cachea
+        // 10 minutos porque un evento ya consultado no cambia en ese periodo.
+        $servicio = new CadReportService;
 
-        // Query 1: Datos completos del evento (identificacion, ubicacion, tiempos, personal, resolucion)
-        // Usa CTEs para calcular fases de tiempos y mapear la llamada original
-        $detalle = Cache::remember($cacheClave, 600, function () use ($numeroEvento) {
-            return DB::connection('sqlsrv_cad')->select("
-            WITH cte_tiempos_fases AS (
-                SELECT
-                    am.Response,
-                    MAX(CASE WHEN c.Name = 'Despachado' THEN am.StatusTime END) AS [Despachado],
-                    MAX(CASE WHEN c.Name = 'En Ruta' THEN am.StatusTime END) AS [En Ruta],
-                    MAX(CASE WHEN c.Name = 'En Sitio' THEN am.StatusTime END) AS [En Sitio],
-                    MAX(CASE WHEN c.Name = 'Terminado' THEN am.StatusTime END) AS [Terminado],
-                    MAX(CASE WHEN c.Name = 'Despachado' THEN am.Agent END) AS DespachadorAgentOID,
-                    MAX(CASE WHEN c.Name = 'Despachado' THEN am.Workstation END) AS DespachadorWorkstationOID
-                FROM AssignModif am WITH (NOLOCK)
-                INNER JOIN Statuses c WITH (NOLOCK) ON c.OID = am.ResourceStatus
-                WHERE am.Response IN (SELECT OID FROM Responses WITH (NOLOCK) WHERE SequenceNumber = ?)
-                GROUP BY am.Response
-            ),
-            cte_Calls AS (
-                SELECT
-                    c.Incident,
-                    MIN(c.CreationTime) AS [HoraLlamada],
-                    MIN(c.Caller) AS CallerOID,
-                    MIN(c.Origin) AS OriginOID,
-                    MAX(c.CustomerName) AS CustomerName
-                FROM Calls c WITH (NOLOCK)
-                WHERE c.Incident IN (SELECT Incident FROM Responses WITH (NOLOCK) WHERE SequenceNumber = ?)
-                GROUP BY c.Incident
-            )
-            SELECT
-                r.SequenceNumber AS [Numero de Evento],
-                i.SequenceNumber AS [Numero Incidente],
-                rt.Name AS [Tipo de Evento],
-                pri.Name AS [Prioridad],
-                ag.Name AS [Agencia],
-                st.Name AS [Estado Actual],
-                ori.Name AS [Origen de Entrada],
-                adr.CommonPlace AS [Lugar Comun],
-                adr.FreeFormatAddress AS [Direccion Completa],
-                str_main.Name AS [Calle Principal],
-                str_cross1.Name AS [Cruce Calle 1],
-                str_cross2.Name AS [Cruce Calle 2],
-                adr.XCoordinate AS [Coordenada X],
-                adr.YCoordinate AS [Coordenada Y],
-                z.Name AS [Zona],
-                COALESCE(clr.PhoneOwnerName, c_time.CustomerName, 'No Registrado') AS [Nombre Informante],
-                COALESCE(clr.PhoneNumber, r.PowerPhoneNumber, 'Sin Telefono') AS [Telefono Informante],
-                clt.Name AS [Tipo Informante],
-                COALESCE(ag_tel.Firstname + ' ' + ag_tel.Lastname, ag_tel.DisplayName, 'Desconocido') AS [Telefonista],
-                ag_tel.LogonName AS [Usuario Telefonista],
-                w_tel.WorkstationNumber AS [Puesto Telefonista],
-                COALESCE(ag_dsp.Firstname + ' ' + ag_dsp.Lastname, ag_dsp.DisplayName, 'Desconocido') AS [Despachador],
-                ag_dsp.LogonName AS [Usuario Despachador],
-                w_dsp.WorkstationNumber AS [Puesto Despachador],
-                c_time.[HoraLlamada] AS [Hora Llamada],
-                r.CreationTime AS [Hora Creacion],
-                tf.[Despachado] AS [Hora Despachado],
-                tf.[En Ruta] AS [Hora En Ruta],
-                tf.[En Sitio] AS [Hora En Sitio],
-                tf.[Terminado] AS [Hora Terminado],
-                CASE WHEN r.Status = 7 THEN r.StatusTime ELSE NULL END AS [Hora Cierre],
-                CONVERT(VARCHAR(8), DATEADD(SECOND,
-                    CASE WHEN tf.[Despachado] >= r.CreationTime THEN DATEDIFF(SECOND, r.CreationTime, tf.[Despachado]) ELSE 0 END, 0), 108) AS [Duracion Despacho],
-                CONVERT(VARCHAR(8), DATEADD(SECOND,
-                    CASE WHEN tf.[En Sitio] >= tf.[Despachado] THEN DATEDIFF(SECOND, tf.[Despachado], tf.[En Sitio]) ELSE 0 END, 0), 108) AS [Tiempo Viaje],
-                CONVERT(VARCHAR(8), DATEADD(SECOND,
-                    CASE WHEN r.Status = 7 AND r.StatusTime >= r.CreationTime THEN DATEDIFF(SECOND, r.CreationTime, r.StatusTime) ELSE 0 END, 0), 108) AS [Duracion Evento],
-                disp.Name AS [Codigo Cierre]
-            FROM Responses r WITH (NOLOCK)
-            INNER JOIN Incidents i WITH (NOLOCK) ON r.Incident = i.OID
-            INNER JOIN ResponseTypes rt WITH (NOLOCK) ON r.ResponseType = rt.OID
-            LEFT JOIN Priorities pri WITH (NOLOCK) ON r.Priority = pri.OID
-            LEFT JOIN Agencies ag WITH (NOLOCK) ON r.Agency = ag.OID
-            LEFT JOIN Statuses st WITH (NOLOCK) ON r.Status = st.OID
-            LEFT JOIN cte_Calls c_time ON r.Incident = c_time.Incident
-            LEFT JOIN Origins ori WITH (NOLOCK) ON c_time.OriginOID = ori.OID
-            LEFT JOIN Callers clr WITH (NOLOCK) ON c_time.CallerOID = clr.OID
-            LEFT JOIN CallerTypes clt WITH (NOLOCK) ON clr.CallerType = clt.OID
-            LEFT JOIN Addresses adr WITH (NOLOCK) ON r.Address = adr.OID
-            LEFT JOIN Streets str_main WITH (NOLOCK) ON adr.Street = str_main.OID
-            LEFT JOIN Streets str_cross1 WITH (NOLOCK) ON adr.CrossStreet1 = str_cross1.OID
-            LEFT JOIN Streets str_cross2 WITH (NOLOCK) ON adr.CrossStreet2 = str_cross2.OID
-            LEFT JOIN Zones z WITH (NOLOCK) ON r.Zone = z.OID
-            LEFT JOIN cte_tiempos_fases tf ON r.OID = tf.Response
-            LEFT JOIN Agents ag_tel WITH (NOLOCK) ON i.Agent = ag_tel.OID
-            LEFT JOIN WorkStations w_tel WITH (NOLOCK) ON i.WorkStation = w_tel.OID
-            LEFT JOIN Agents ag_dsp WITH (NOLOCK) ON tf.DespachadorAgentOID = ag_dsp.OID
-            LEFT JOIN WorkStations w_dsp WITH (NOLOCK) ON tf.DespachadorWorkstationOID = w_dsp.OID
-            LEFT JOIN FinalizedResponsesDispCodes fr WITH (NOLOCK) ON r.OID = fr.Response AND (fr.Deleted = 0 OR fr.Deleted IS NULL)
-            LEFT JOIN DispositionCodes disp WITH (NOLOCK) ON fr.DispositionCode = disp.OID
-            WHERE r.SequenceNumber = ?
-        ", [$numeroEvento, $numeroEvento, $numeroEvento]);
-        });
-
-        // Query 2: Cronologia de notas del evento (ResponseNotes ordenadas por fecha)
-        // Usa UNION para combinar notas del incidente y del despacho especifico
-        // Tambien se cachea con el mismo TTL para abrir el modal de forma instantanea
-        $notas = Cache::remember($cacheClave.'_notas', 600, function () use ($numeroEvento) {
-            return DB::connection('sqlsrv_cad')->select("
-            WITH cte_EventOIDs AS (
-                SELECT OID AS ResponseOID, Incident AS IncidentOID
-                FROM Responses WITH (NOLOCK)
-                WHERE SequenceNumber = ?
-
-                UNION ALL
-
-                SELECT NULL AS ResponseOID, OID AS IncidentOID
-                FROM Incidents WITH (NOLOCK)
-                WHERE SequenceNumber = ?
-            )
-            SELECT
-                rn.[TimeStamp1] AS [Fecha y Hora],
-                COALESCE(ag.DisplayName, ag.LogonName, ag.Firstname + ' ' + ag.Lastname, 'Sistema/Auto') AS [Operador],
-                w.WorkstationNumber AS [Estacion],
-                rn.[Notes] AS [Nota]
-            FROM (
-                SELECT TimeStamp1, Agent, WorkStation, Notes
-                FROM ResponseNotes WITH (NOLOCK)
-                WHERE Incident IN (SELECT IncidentOID FROM cte_EventOIDs)
-
-                UNION
-
-                SELECT TimeStamp1, Agent, WorkStation, Notes
-                FROM ResponseNotes WITH (NOLOCK)
-                WHERE Response IN (SELECT ResponseOID FROM cte_EventOIDs WHERE ResponseOID IS NOT NULL)
-            ) rn
-            LEFT JOIN Agents ag WITH (NOLOCK) ON rn.Agent = ag.OID
-            LEFT JOIN WorkStations w WITH (NOLOCK) ON rn.WorkStation = w.OID
-            ORDER BY rn.TimeStamp1 ASC
-        ", [$numeroEvento, $numeroEvento]);
-        });
-
-        // Asigna los resultados a las propiedades del componente para el modal
-        $this->detalleEvento = $detalle[0] ?? null;
-
-        // Agrega el numero de incidente formateado (SE911:AAAA:MM:DD:NNNNNN) para mostrar en el modal
-        if ($this->detalleEvento) {
-            $incSeq = $this->detalleEvento->{'Numero Incidente'} ?? null;
-            $creacion = $this->detalleEvento->{'Hora Creacion'} ?? null;
-            $numero = null;
-            if ($incSeq !== null && $incSeq !== '') {
-                $partesInc = explode(':', (string) $incSeq);
-                $numero = end($partesInc);
-            }
-            $fecha = $creacion ? Carbon::parse($creacion) : now();
-            $this->detalleEvento->{'Numero Incidente Formateado'} = $numero !== null
-                ? "SE911:{$fecha->format('Y')}:{$fecha->format('m')}:{$fecha->format('d')}:{$numero}"
-                : ($this->detalleEvento->{'Numero de Evento'} ?? '');
-        }
-
-        $this->notasEvento = $notas;
+        $this->detalleEvento = $servicio->getDetalleEvento($numeroEvento);
+        $this->notasEvento = $servicio->getNotasEvento($numeroEvento);
 
         // Abre el modal usando el evento de Filament (open-modal)
         $this->dispatch('open-modal', id: 'detalle-evento');
-
-        // Notifica al navegador que el mapa debe inicializarse (event Livewire -> JS)
-        $this->dispatch('mapa-evento-listo');
     }
 
     /**
@@ -290,59 +139,75 @@ class EventReportTable extends Component
      */
     protected function consultarSql(?int $page = null, ?int $perPage = null): object|int|array
     {
-        $desde = $this->fechaDesde;
-        $hasta = $this->fechaHasta;
-        $buscarSoloPorEvento = empty($this->fechaDesde) && empty($this->fechaHasta) && ! empty($this->busqueda);
+        // Livewire re-renderiza el componente completo en cada accion (p.ej. al abrir el
+        // modal con verDetalle); sin cache eso re-ejecutaria las consultas pesadas de la
+        // tabla (pagina + COUNT) en cada clic y la pagina se sentia congelada. Se cachea
+        // el resultado con TTL corto (60s) por combinacion de filtros, orden y pagina.
+        $claveCache = 'tabla_eventos_'.md5(json_encode([
+            $this->fechaDesde,
+            $this->fechaHasta,
+            $this->busqueda,
+            $this->sortColumn,
+            $this->sortDirection,
+            $perPage,
+            $page,
+        ]));
 
-        // Campo de ordenamiento segun la columna seleccionada
-        $orderField = 'le.[NUMERO_SECUENCIA]';
-        if ($this->sortColumn === 'tiempo') {
-            $orderField = 'CASE WHEN le.HoraCierre >= le.[FECHA_CREACION] THEN DATEDIFF(SECOND, le.[FECHA_CREACION], le.HoraCierre) ELSE 0 END';
-        }
-        $direction = strtoupper($this->sortDirection) === 'DESC' ? 'DESC' : 'ASC';
+        return Cache::remember($claveCache, 60, function () use ($page, $perPage) {
+            $desde = $this->fechaDesde;
+            $hasta = $this->fechaHasta;
+            $buscarSoloPorEvento = empty($this->fechaDesde) && empty($this->fechaHasta) && ! empty($this->busqueda);
 
-        // Se usa la consulta por numero de evento (busqueda puntual) o por rango de fechas
-        $query = $buscarSoloPorEvento
-            ? $this->querySqlPorEvento($orderField, $direction)
-            : $this->querySqlPorRango($desde, $hasta, $orderField, $direction);
-        $params = $buscarSoloPorEvento ? $this->paramsPorEvento() : [];
+            // Campo de ordenamiento segun la columna seleccionada
+            $orderField = 'le.[NUMERO_SECUENCIA]';
+            if ($this->sortColumn === 'tiempo') {
+                $orderField = 'CASE WHEN le.HoraCierre >= le.[FECHA_CREACION] THEN DATEDIFF(SECOND, le.[FECHA_CREACION], le.HoraCierre) ELSE 0 END';
+            }
+            $direction = strtoupper($this->sortDirection) === 'DESC' ? 'DESC' : 'ASC';
 
-        // Ayudante local para construir un statement valido: los CTEs SIEMPRE van al
-        // inicio del statement (SQL Server 2008 R2 no permite WITH dentro de FROM()).
-        $build = function (string $select) use ($query) {
-            return "
-                WITH {$query['ctes']}
-                $select
-            ";
-        };
+            // Se usa la consulta por numero de evento (busqueda puntual) o por rango de fechas
+            $query = $buscarSoloPorEvento
+                ? $this->querySqlPorEvento($orderField, $direction)
+                : $this->querySqlPorRango($desde, $hasta, $orderField, $direction);
+            $params = $buscarSoloPorEvento ? $this->paramsPorEvento() : [];
 
-        // Modo conteo: cuenta las filas sin transferir los datos a PHP
-        if ($page === null || $perPage === null) {
-            $countSql = $build("SELECT COUNT(*) AS total FROM (
+            // Ayudante local para construir un statement valido: los CTEs SIEMPRE van al
+            // inicio del statement (SQL Server 2008 R2 no permite WITH dentro de FROM()).
+            $build = function (string $select) use ($query) {
+                return "
+                    WITH {$query['ctes']}
+                    $select
+                ";
+            };
+
+            // Modo conteo: cuenta las filas sin transferir los datos a PHP
+            if ($page === null || $perPage === null) {
+                $countSql = $build("SELECT COUNT(*) AS total FROM (
+                    {$query['select']}
+                ) AS t");
+                $total = DB::connection('sqlsrv_cad')->selectOne($countSql, $params);
+
+                return (int) ($total->total ?? 0);
+            }
+
+            // Modo lista: aplica ROW_NUMBER y pagina en SQL Server
+            $inicio = (($page - 1) * $perPage) + 1;
+            $fin = $page * $perPage;
+
+            $paginatedSql = $build("SELECT * FROM (
                 {$query['select']}
-            ) AS t");
-            $total = DB::connection('sqlsrv_cad')->selectOne($countSql, $params);
+            ) AS paginated WHERE rn BETWEEN $inicio AND $fin");
+            $filas = DB::connection('sqlsrv_cad')->select($paginatedSql, $params);
 
-            return (int) ($total->total ?? 0);
-        }
+            // Si ademas se filtro por texto dentro del rango, se mantiene el filtro en PHP
+            if (! $buscarSoloPorEvento && ! empty($this->busqueda)) {
+                $filas = array_values(array_filter($filas, function ($row) {
+                    return str_contains($row->{'Numero de Evento'}, $this->busqueda);
+                }));
+            }
 
-        // Modo lista: aplica ROW_NUMBER y pagina en SQL Server
-        $inicio = (($page - 1) * $perPage) + 1;
-        $fin = $page * $perPage;
-
-        $paginatedSql = $build("SELECT * FROM (
-            {$query['select']}
-        ) AS paginated WHERE rn BETWEEN $inicio AND $fin");
-        $filas = DB::connection('sqlsrv_cad')->select($paginatedSql, $params);
-
-        // Si ademas se filtro por texto dentro del rango, se mantiene el filtro en PHP
-        if (! $buscarSoloPorEvento && ! empty($this->busqueda)) {
-            $filas = array_values(array_filter($filas, function ($row) {
-                return str_contains($row->{'Numero de Evento'}, $this->busqueda);
-            }));
-        }
-
-        return $this->formatearNumerosIncidente($filas);
+            return $this->formatearNumerosIncidente($filas);
+        });
     }
 
     /**

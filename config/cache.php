@@ -15,7 +15,10 @@ return [
     |
     */
 
-    'default' => env('CACHE_STORE', 'database'),
+    // Cache en disco (file): SQLite (database) serializa todos los escritores y bajo
+    // concurrencia (varios operadores + polling del dashboard) bloquea/ congela las
+    // peticiones que usan Cache::remember (modal de eventos, widgets, etc).
+    'default' => 'file',
 
     /*
     |--------------------------------------------------------------------------

@@ -2,6 +2,7 @@
 
 namespace App\Filament\Widgets;
 
+use BezhanSalleh\FilamentShield\Traits\HasWidgetShield;
 use Filament\Tables;
 use Filament\Tables\Table;
 use Filament\Widgets\TableWidget as BaseWidget;
@@ -16,7 +17,7 @@ use Illuminate\Support\Facades\DB;
  */
 class IncidentTypesTable extends BaseWidget
 {
-    use \BezhanSalleh\FilamentShield\Traits\HasWidgetShield;
+    use HasWidgetShield;
 
     protected static ?string $heading = 'Top 5 de Incidentes sin Cerrar (Hoy)';
 
@@ -55,7 +56,7 @@ class IncidentTypesTable extends BaseWidget
         }
 
         return $table
-            ->records(fn() => $records)
+            ->records(fn () => $records)
             ->columns([
                 Tables\Columns\TextColumn::make('tipo')
                     ->label('Tipo de Incidente')

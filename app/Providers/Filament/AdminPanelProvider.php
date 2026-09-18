@@ -44,8 +44,6 @@ class AdminPanelProvider extends PanelProvider
             ])
             ->renderHook('panels::head.end', fn (): string => Blade::render("
                 @vite('resources/css/app.css')
-                <link rel=\"stylesheet\" href=\"https://unpkg.com/leaflet@1.9.4/dist/leaflet.css\" crossorigin=\"\" />
-                <script src=\"https://unpkg.com/leaflet@1.9.4/dist/leaflet.js\" crossorigin=\"\"></script>
             "))
             ->middleware([
                 EncryptCookies::class,

@@ -16,8 +16,10 @@
         @if($this->total() > 0)
             <div class="w-full relative overflow-x-auto rounded-xl border border-gray-200 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-900">
                 {{-- Indicador de carga: se muestra solo cuando la consulta tarda mas de 200ms
-                     (evita parpadeos en respuestas rapidas). Cubre la tabla con un overlay. --}}
-                <div wire:loading.delay wire:target="search, sortBy, goToPage, previousPage, nextPage, updatingPerPage, perPage, verDetalle"
+                     (evita parpadeos en respuestas rapidas). Cubre la tabla con un overlay.
+                     verDetalle NO esta en la lista para no bloquear la tabla mientras se
+                     abre el modal (el modal ya muestra su propio aviso "Cargando informacion"). --}}
+                <div wire:loading.delay wire:target="search, sortBy, goToPage, previousPage, nextPage, updatingPerPage, perPage"
                      class="absolute inset-0 z-20 flex items-center justify-center bg-white/70 backdrop-blur-sm dark:bg-gray-900/70">
                     <div class="flex flex-col items-center gap-3">
                         <svg class="w-10 h-10 text-primary-600 animate-spin" fill="none" viewBox="0 0 24 24">
@@ -74,7 +76,7 @@
                             <tr wire:click="verDetalle('{{ $row->{'Numero de Evento'} }}')"
                                 class="bg-white transition-colors hover:bg-gray-50 dark:bg-gray-900 dark:hover:bg-gray-800/50 cursor-pointer">
                                 <td class="px-4 py-3 text-sm text-gray-500 dark:text-gray-400 whitespace-nowrap">{{ $num }}</td>
-                                <td class="px-4 py-3 text-sm font-bold text-gray-950 dark:text-white whitespace-nowrap">{{ $row->{'Numero Incidente Formateado'} }}</td>
+                                <td class="px-4 py-3 text-sm font-bold text-gray-950 dark:text-white whitespace-nowrap">{{ $row->{'Numero de Evento'} }}</td>
                                 <td class="px-4 py-3 text-sm text-gray-600 dark:text-gray-400 min-w-[200px]">{{ $row->{'Tipo de Evento'} }}</td>
                                 <td class="px-4 py-3 text-sm text-gray-600 dark:text-gray-400 min-w-[150px]">{{ $row->Telefonista }}</td>
                                 <td class="px-4 py-3 text-sm text-gray-600 dark:text-gray-400 min-w-[150px]">{{ $row->Despachador }}</td>
@@ -147,236 +149,13 @@
     <x-filament::modal id="detalle-evento" width="7xl" :close-button="true">
         {{-- Encabezado del modal con el numero de evento --}}
         <x-slot name="heading">
-            Detalle del Evento: {{ $detalleEvento->{'Numero Incidente Formateado'} ?? $detalleEvento->{'Numero de Evento'} ?? '' }}
+            Detalle del Evento: {{ $detalleEvento->{'Numero de Evento'} ?? '' }}
         </x-slot>
 
         @if($detalleEvento)
-            {{-- Seccion 1: Informacion completa del evento --}}
-            <div class="space-y-6">
-                {{-- Identificacion y Categoria --}}
-                <x-filament::section heading="Identificacion y Categoria" icon="heroicon-m-information-circle">
-                    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-                        <div>
-                            <span class="font-medium text-gray-500 dark:text-gray-400">Numero de Evento:</span>
-                            <p class="text-gray-900 dark:text-white font-bold">{{ $detalleEvento->{'Numero Incidente Formateado'} ?? $detalleEvento->{'Numero de Evento'} }}</p>
-                        </div>
-                        <div>
-                            <span class="font-medium text-gray-500 dark:text-gray-400">Tipo de Evento:</span>
-                            <p class="text-gray-900 dark:text-white">{{ $detalleEvento->{'Tipo de Evento'} }}</p>
-                        </div>
-                        <div>
-                            <span class="font-medium text-gray-500 dark:text-gray-400">Prioridad:</span>
-                            <p class="text-gray-900 dark:text-white">{{ $detalleEvento->Prioridad ?? '-' }}</p>
-                        </div>
-                        <div>
-                            <span class="font-medium text-gray-500 dark:text-gray-400">Agencia:</span>
-                            <p class="text-gray-900 dark:text-white">{{ $detalleEvento->Agencia ?? '-' }}</p>
-                        </div>
-                        <div>
-                            <span class="font-medium text-gray-500 dark:text-gray-400">Estado Actual:</span>
-                            <p class="text-gray-900 dark:text-white">{{ $detalleEvento->{'Estado Actual'} }}</p>
-                        </div>
-                        <div>
-                            <span class="font-medium text-gray-500 dark:text-gray-400">Origen de Entrada:</span>
-                            <p class="text-gray-900 dark:text-white">{{ $detalleEvento->{'Origen de Entrada'} ?? '-' }}</p>
-                        </div>
-                        <div>
-                            <span class="font-medium text-gray-500 dark:text-gray-400">Codigo de Cierre:</span>
-                            <p class="text-gray-900 dark:text-white">{{ $detalleEvento->{'Codigo Cierre'} ?? 'Sin asignar' }}</p>
-                        </div>
-                    </div>
-                </x-filament::section>
-
-                {{-- Ubicacion Geografica --}}
-                <x-filament::section heading="Ubicacion Geografica" icon="heroicon-m-map-pin">
-                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
-                        <div class="md:col-span-3">
-                            <span class="font-medium text-gray-500 dark:text-gray-400">Direccion Completa:</span>
-                            <p class="text-gray-900 dark:text-white">{{ $detalleEvento->{'Direccion Completa'} ?? '-' }}</p>
-                        </div>
-                        <div>
-                            <span class="font-medium text-gray-500 dark:text-gray-400">Lugar Comun:</span>
-                            <p class="text-gray-900 dark:text-white">{{ $detalleEvento->{'Lugar Comun'} ?? '-' }}</p>
-                        </div>
-                        <div>
-                            <span class="font-medium text-gray-500 dark:text-gray-400">Calle Principal:</span>
-                            <p class="text-gray-900 dark:text-white">{{ $detalleEvento->{'Calle Principal'} ?? '-' }}</p>
-                        </div>
-                        <div>
-                            <span class="font-medium text-gray-500 dark:text-gray-400">Zona / Sector:</span>
-                            <p class="text-gray-900 dark:text-white">{{ $detalleEvento->Zona ?? '-' }}</p>
-                        </div>
-                        <div>
-                            <span class="font-medium text-gray-500 dark:text-gray-400">Cruce Calle 1:</span>
-                            <p class="text-gray-900 dark:text-white">{{ $detalleEvento->{'Cruce Calle 1'} ?? '-' }}</p>
-                        </div>
-                        <div>
-                            <span class="font-medium text-gray-500 dark:text-gray-400">Cruce Calle 2:</span>
-                            <p class="text-gray-900 dark:text-white">{{ $detalleEvento->{'Cruce Calle 2'} ?? '-' }}</p>
-                        </div>
-                        <div>
-                            <span class="font-medium text-gray-500 dark:text-gray-400">Coordenadas:</span>
-                            <p class="text-gray-900 dark:text-white">X: {{ $detalleEvento->{'Coordenada X'} ?? '-' }} / Y: {{ $detalleEvento->{'Coordenada Y'} ?? '-' }}</p>
-                        </div>
-                    </div>
-
-                    {{-- Mapa interactivo con Leaflet.js y OpenStreetMap --}}
-                    {{-- Las coordenadas (X=lng, Y=lat) y el texto del popup se guardan en
-                         atributos data-* porque el script del mapa se registra una sola vez
-                         al montar el componente y lee los datos aqui en cada apertura. --}}
-                    @if($detalleEvento->{'Coordenada X'} && $detalleEvento->{'Coordenada Y'})
-                        <div class="mt-4">
-                            <div id="mapa-evento"
-                                 data-lat="{{ $detalleEvento->{'Coordenada Y'} }}"
-                                 data-lng="{{ $detalleEvento->{'Coordenada X'} }}"
-                                 data-evento="{{ $detalleEvento->{'Numero de Evento'} ?? '' }}"
-                                 data-direccion="{{ $detalleEvento->{'Direccion Completa'} ?? '' }}"
-                                 class="w-full h-[400px] rounded-lg border border-gray-200 dark:border-gray-700 z-0"></div>
-                            <div class="mt-2 flex items-center gap-2">
-                                <a href="https://www.google.com/maps?q={{ $detalleEvento->{'Coordenada Y'} }},{{ $detalleEvento->{'Coordenada X'} }}" target="_blank" rel="noopener noreferrer"
-                                   class="inline-flex items-center gap-1 text-sm text-primary-600 hover:text-primary-500 dark:text-primary-400">
-                                    <x-heroicon-o-map-pin class="w-4 h-4" />
-                                    Abrir en Google Maps
-                                </a>
-                            </div>
-                        </div>
-                    @endif
-                </x-filament::section>
-
-                {{-- Datos de Contacto (Informante) --}}
-                <x-filament::section heading="Datos de Contacto (Informante)" icon="heroicon-m-phone">
-                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
-                        <div>
-                            <span class="font-medium text-gray-500 dark:text-gray-400">Nombre del Informante:</span>
-                            <p class="text-gray-900 dark:text-white">{{ $detalleEvento->{'Nombre Informante'} }}</p>
-                        </div>
-                        <div>
-                            <span class="font-medium text-gray-500 dark:text-gray-400">Telefono Informante:</span>
-                            <p class="text-gray-900 dark:text-white">{{ $detalleEvento->{'Telefono Informante'} }}</p>
-                        </div>
-                        <div>
-                            <span class="font-medium text-gray-500 dark:text-gray-400">Tipo de Informante:</span>
-                            <p class="text-gray-900 dark:text-white">{{ $detalleEvento->{'Tipo Informante'} ?? '-' }}</p>
-                        </div>
-                    </div>
-                </x-filament::section>
-
-                {{-- Personal y WorkStations --}}
-                <x-filament::section heading="Personal Asociado" icon="heroicon-m-users">
-                    <div class="grid grid-cols-2 md:grid-cols-6 gap-4 text-sm">
-                        <div>
-                            <span class="font-medium text-gray-500 dark:text-gray-400">Telefonista:</span>
-                            <p class="text-gray-900 dark:text-white">{{ $detalleEvento->Telefonista }}</p>
-                        </div>
-                        <div>
-                            <span class="font-medium text-gray-500 dark:text-gray-400">Usuario Telefonista:</span>
-                            <p class="text-gray-900 dark:text-white">{{ $detalleEvento->{'Usuario Telefonista'} ?? '-' }}</p>
-                        </div>
-                        <div>
-                            <span class="font-medium text-gray-500 dark:text-gray-400">Puesto Telefonista:</span>
-                            <p class="text-gray-900 dark:text-white">{{ $detalleEvento->{'Puesto Telefonista'} ?? '-' }}</p>
-                        </div>
-                        <div>
-                            <span class="font-medium text-gray-500 dark:text-gray-400">Despachador:</span>
-                            <p class="text-gray-900 dark:text-white">{{ $detalleEvento->Despachador }}</p>
-                        </div>
-                        <div>
-                            <span class="font-medium text-gray-500 dark:text-gray-400">Usuario Despachador:</span>
-                            <p class="text-gray-900 dark:text-white">{{ $detalleEvento->{'Usuario Despachador'} ?? '-' }}</p>
-                        </div>
-                        <div>
-                            <span class="font-medium text-gray-500 dark:text-gray-400">Puesto Despachador:</span>
-                            <p class="text-gray-900 dark:text-white">{{ $detalleEvento->{'Puesto Despachador'} ?? '-' }}</p>
-                        </div>
-                    </div>
-                </x-filament::section>
-
-                {{-- Linea de Tiempo del Caso --}}
-                <x-filament::section heading="Linea de Tiempo" icon="heroicon-m-clock">
-                    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-                        <div>
-                            <span class="font-medium text-gray-500 dark:text-gray-400">Hora de Llamada:</span>
-                            <p class="text-gray-900 dark:text-white font-bold">{{ $detalleEvento->{'Hora Llamada'} ? \Carbon\Carbon::parse($detalleEvento->{'Hora Llamada'})->format('H:i:s') : '-' }}</p>
-                        </div>
-                        <div>
-                            <span class="font-medium text-gray-500 dark:text-gray-400">Hora Creacion:</span>
-                            <p class="text-gray-900 dark:text-white font-bold">{{ $detalleEvento->{'Hora Creacion'} ? \Carbon\Carbon::parse($detalleEvento->{'Hora Creacion'})->format('H:i:s') : '-' }}</p>
-                        </div>
-                        <div>
-                            <span class="font-medium text-gray-500 dark:text-gray-400">Hora Despachado:</span>
-                            <p class="text-gray-900 dark:text-white">{{ $detalleEvento->{'Hora Despachado'} ? \Carbon\Carbon::parse($detalleEvento->{'Hora Despachado'})->format('H:i:s') : '-' }}</p>
-                        </div>
-                        <div>
-                            <span class="font-medium text-gray-500 dark:text-gray-400">Hora En Ruta:</span>
-                            <p class="text-gray-900 dark:text-white">{{ $detalleEvento->{'Hora En Ruta'} ? \Carbon\Carbon::parse($detalleEvento->{'Hora En Ruta'})->format('H:i:s') : '-' }}</p>
-                        </div>
-                        <div>
-                            <span class="font-medium text-gray-500 dark:text-gray-400">Hora En Sitio:</span>
-                            <p class="text-gray-900 dark:text-white">{{ $detalleEvento->{'Hora En Sitio'} ? \Carbon\Carbon::parse($detalleEvento->{'Hora En Sitio'})->format('H:i:s') : '-' }}</p>
-                        </div>
-                        <div>
-                            <span class="font-medium text-gray-500 dark:text-gray-400">Hora Terminado:</span>
-                            <p class="text-gray-900 dark:text-white">{{ $detalleEvento->{'Hora Terminado'} ? \Carbon\Carbon::parse($detalleEvento->{'Hora Terminado'})->format('H:i:s') : '-' }}</p>
-                        </div>
-                        <div>
-                            <span class="font-medium text-gray-500 dark:text-gray-400">Hora Cierre:</span>
-                            <p class="text-gray-900 dark:text-white">{{ $detalleEvento->{'Hora Cierre'} ? \Carbon\Carbon::parse($detalleEvento->{'Hora Cierre'})->format('H:i:s') : '-' }}</p>
-                        </div>
-                    </div>
-
-                    {{-- Duraciones calculadas --}}
-                    <div class="mt-4 grid grid-cols-1 md:grid-cols-3 gap-4 text-sm border-t border-gray-200 dark:border-gray-700 pt-4">
-                        <div class="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-3">
-                            <span class="font-medium text-blue-600 dark:text-blue-400">Duracion Despacho (Ciem 911):</span>
-                            <p class="text-blue-900 dark:text-blue-100 text-lg font-bold">{{ $detalleEvento->{'Duracion Despacho'} ?? '00:00:00' }}</p>
-                        </div>
-                        <div class="bg-amber-50 dark:bg-amber-900/20 rounded-lg p-3">
-                            <span class="font-medium text-amber-600 dark:text-amber-400">Tiempo de Viaje (Respuesta):</span>
-                            <p class="text-amber-900 dark:text-amber-100 text-lg font-bold">{{ $detalleEvento->{'Tiempo Viaje'} ?? '00:00:00' }}</p>
-                        </div>
-                        <div class="bg-red-50 dark:bg-red-900/20 rounded-lg p-3">
-                            <span class="font-medium text-red-600 dark:text-red-400">Duracion Evento (Crea a Cierre):</span>
-                            <p class="text-red-900 dark:text-red-100 text-lg font-bold">{{ $detalleEvento->{'Duracion Evento'} ?? '00:00:00' }}</p>
-                        </div>
-                    </div>
-                </x-filament::section>
-
-                {{-- Seccion 2: Cronologia de Notas --}}
-                <x-filament::section heading="Cronologia de Notas" icon="heroicon-m-document-text">
-                    @if(count($notasEvento) > 0)
-                        <div class="overflow-x-auto">
-                            <table class="w-full text-sm divide-y divide-gray-200 dark:divide-gray-700">
-                                <thead class="bg-gray-50 dark:bg-gray-800/50">
-                                    <tr>
-                                        <th class="px-3 py-2 text-left text-xs font-semibold uppercase text-gray-500 dark:text-gray-400">#</th>
-                                        <th class="px-3 py-2 text-left text-xs font-semibold uppercase text-gray-500 dark:text-gray-400">Fecha y Hora</th>
-                                        <th class="px-3 py-2 text-left text-xs font-semibold uppercase text-gray-500 dark:text-gray-400">Operador / Agente</th>
-                                        <th class="px-3 py-2 text-left text-xs font-semibold uppercase text-gray-500 dark:text-gray-400">Estacion</th>
-                                        <th class="px-3 py-2 text-left text-xs font-semibold uppercase text-gray-500 dark:text-gray-400">Nota</th>
-                                    </tr>
-                                </thead>
-                                <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
-                                    @foreach($notasEvento as $indice => $nota)
-                                        <tr class="hover:bg-gray-50 dark:hover:bg-gray-800/50">
-                                            <td class="px-3 py-2 text-gray-500 dark:text-gray-400 whitespace-nowrap">{{ $indice + 1 }}</td>
-                                            <td class="px-3 py-2 text-gray-900 dark:text-white whitespace-nowrap font-medium">
-                                                {{ \Carbon\Carbon::parse($nota->{'Fecha y Hora'})->format('d/m/Y H:i:s') }}
-                                            </td>
-                                            <td class="px-3 py-2 text-gray-600 dark:text-gray-400">{{ $nota->Operador }}</td>
-                                            <td class="px-3 py-2 text-gray-600 dark:text-gray-400">{{ $nota->Estacion ?? '-' }}</td>
-                                            <td class="px-3 py-2 text-gray-600 dark:text-gray-400 max-w-lg">
-                                                <div class="whitespace-pre-wrap text-xs leading-relaxed">{{ $nota->Nota }}</div>
-                                            </td>
-                                        </tr>
-                                    @endforeach
-                                </tbody>
-                            </table>
-                        </div>
-                    @else
-                        <p class="text-sm text-gray-500 dark:text-gray-400 text-center py-4">No hay notas registradas para este evento.</p>
-                    @endif
-                </x-filament::section>
-            </div>
+            {{-- Contenido del detalle reutilizable: secciones, mapa y notas.
+                 Lo comparte el widget de Incidentes Activos (accion "Ver Evento"). --}}
+            <x-evento-detalle :detalleEvento="$detalleEvento" :notasEvento="$notasEvento" />
         @else
             <div class="flex flex-col items-center justify-center gap-3 py-10 text-gray-500 dark:text-gray-400">
                 <svg class="w-8 h-8 text-primary-600 animate-spin" fill="none" viewBox="0 0 24 24">
@@ -388,57 +167,3 @@
         @endif
     </x-filament::modal>
 </div>
-
-{{-- Inicializacion del mapa Leaflet/OSM del detalle de evento.
-     El listener se registra aqui (raiz del componente) y NO dentro del modal:
-     Livewire inyecta el contenido del modal despues de la primera carga y los
-     <script> inyectados por morph no se ejecutan; ademas 'livewire:initialized'
-     solo se dispara una vez al cargar la pagina. Los datos (lat/lng/numero/
-     direccion) se leen del DOM en el momento del evento. --}}
-@script
-<script>
-    Livewire.on('mapa-evento-listo', () => {
-        // Retardo minimo para garantizar que el contenido del modal ya esta en el DOM
-        setTimeout(() => {
-            const el = document.getElementById('mapa-evento');
-            if (!el) return;
-
-            const lat = parseFloat(el.dataset.lat);
-            const lng = parseFloat(el.dataset.lng);
-
-            // Coordenadas ausentes o invalidas: se muestra un aviso en lugar del mapa
-            if (isNaN(lat) || isNaN(lng) || (lat === 0 && lng === 0)) {
-                el.innerHTML = '<div class="flex items-center justify-center h-full text-gray-500">Coordenadas no disponibles</div>';
-                return;
-            }
-
-            // Si se abrio otro evento antes, se destruye el mapa previo para recrearlo
-            if (el._map) {
-                el._map.remove();
-                el._map = null;
-            }
-
-            const mapa = L.map(el, { zoomControl: true }).setView([lat, lng], 16);
-            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                attribution: '&copy; OpenStreetMap contributors',
-                maxZoom: 19
-            }).addTo(mapa);
-
-            // Escapa el texto del popup para insertarlo como HTML seguro
-            const escapar = (valor) => {
-                const d = document.createElement('div');
-                d.textContent = valor;
-                return d.innerHTML;
-            };
-
-            L.marker([lat, lng]).addTo(mapa)
-                .bindPopup('<strong>' + escapar(el.dataset.evento || '') + '</strong><br>' + escapar(el.dataset.direccion || ''))
-                .openPopup();
-
-            el._map = mapa;
-            // Recalcula el tamaño del mapa al abrir el modal (si estuvo oculto tenia 0x0)
-            setTimeout(() => mapa.invalidateSize(), 300);
-        }, 150);
-    });
-</script>
-@endscript

@@ -3,6 +3,7 @@
 namespace App\Filament\Widgets;
 
 use App\Services\CadReportService;
+use BezhanSalleh\FilamentShield\Traits\HasWidgetShield;
 use Filament\Tables;
 use Filament\Tables\Table;
 use Filament\Widgets\TableWidget as BaseWidget;
@@ -15,7 +16,7 @@ use Filament\Widgets\TableWidget as BaseWidget;
  */
 class DispatchStatusTable extends BaseWidget
 {
-    use \BezhanSalleh\FilamentShield\Traits\HasWidgetShield;
+    use HasWidgetShield;
 
     protected static ?string $heading = 'Detalle de Despachos por Estado';
 

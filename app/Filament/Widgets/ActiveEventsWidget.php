@@ -3,11 +3,13 @@
 namespace App\Filament\Widgets;
 
 use App\Models\Cad\Incident;
+use App\Services\CadReportService;
 use BezhanSalleh\FilamentShield\Traits\HasWidgetShield;
 use Filament\Actions\Action;
 use Filament\Tables;
 use Filament\Tables\Table;
 use Filament\Widgets\TableWidget as BaseWidget;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 
@@ -15,15 +17,15 @@ use Illuminate\Support\Facades\DB;
  * Widget: ActiveEventsWidget
  * Nombre: Incidentes Activos sin Cerrar
  * Descripcion: Muestra los incidentes activos ordenados por tiempo (el de mayor duracion primero).
- * Formato del numero de evento: SE911:AAAA:MM:DD:NNNN
+ * Formato del numero de evento: SE911:AAAA:MM:DD:NNNN (numero del ultimo response del incidente).
  * Columnas: Evento, Tipo de Evento, Hora Creacion, Estado, Tiempo (duracion cerrada, igual al reporte).
- * Accion de fila: redirige al Reporte de Eventos con el numero de evento pre-cargado.
+ * Accion de fila: redirige al Reporte de Eventos con el numero del ultimo response pre-cargado.
  */
 class ActiveEventsWidget extends BaseWidget
 {
     use HasWidgetShield;
 
-    protected static ?string $heading = 'Incidentes Activos sin Cerrar';
+    protected static ?string $heading = 'Incidentes con mayor duracion de tiempo antes de cerrarlos';
 
     protected static ?int $sort = 4;
 
@@ -33,11 +35,19 @@ class ActiveEventsWidget extends BaseWidget
 
     protected int|string|array $columnSpan = 'full';
 
+    /** @var object|null Detalle del evento que se muestra en el modal "Ver Evento" */
+    public ?object $detalleEvento = null;
+
+    /** @var array Notas cronologicas del evento que se muestra en el modal "Ver Evento" */
+    public array $notasEvento = [];
+
     public function table(Table $table): Table
     {
         // Consulta raw con NOLOCK para evitar bloqueos contra el CAD
         // LEFT JOIN a Responses/ResponseTypes para obtener el Tipo de Evento
         // COALESCE toma el primer ResponseType disponible del incidente
+        // El numero (NumeroResponse) y el estado provienen del ULTIMO response del
+        // incidente (mas reciente por CreationTime/OID): es la respuesta vigente.
         // La columna SegundosDuracion es la duracion cerrada del primer response
         // (mismo calculo que el "Tiempo Total" del reporte de eventos)
         // ORDER BY SegundosDuracion DESC: el evento con mas tiempo primero;
@@ -48,10 +58,12 @@ class ActiveEventsWidget extends BaseWidget
         $query = Incident::query()
             ->select([
                 'Incidents.OID',
-                'Incidents.SequenceNumber',
                 'Incidents.CreationTime',
-                'st.Name as Estado',
                 DB::raw("COALESCE((SELECT TOP 1 rt.Name FROM Responses r2 WITH (NOLOCK) INNER JOIN ResponseTypes rt WITH (NOLOCK) ON r2.ResponseType = rt.OID WHERE r2.Incident = Incidents.OID), 'Sin Tipo') as TipoEvento"),
+                // Numero de evento: SE911 del ultimo response del incidente (response vigente)
+                DB::raw('(SELECT TOP 1 r1.SequenceNumber FROM Responses r1 WITH (NOLOCK) WHERE r1.Incident = Incidents.OID ORDER BY r1.CreationTime DESC, r1.OID DESC) as NumeroResponse'),
+                // Estado: nombre del status del ultimo response del incidente
+                DB::raw('(SELECT TOP 1 s1.Name FROM Responses r5 WITH (NOLOCK) INNER JOIN Statuses s1 WITH (NOLOCK) ON r5.Status = s1.OID WHERE r5.Incident = Incidents.OID ORDER BY r5.CreationTime DESC, r5.OID DESC) as Estado'),
                 // Duracion cerrada del primer response del incidente, igual que el campo
                 // "Tiempo Total" del reporte de eventos. Si el response esta cerrado
                 // (Status = 7), es la diferencia entre su creacion y su cierre; si no, 0.
@@ -64,7 +76,7 @@ class ActiveEventsWidget extends BaseWidget
                      WHERE r.Incident = Incidents.OID
                      ORDER BY r.CreationTime, r.OID), 0) as SegundosDuracion'),
             ])
-            ->leftJoin('Statuses as st', 'Incidents.Status', '=', 'st.OID')
+            // El filtro de "activo" se mantiene a nivel de incidente (estados 6/7/8 = cerrado/terminado)
             ->whereNotIn('Incidents.Status', [6, 7, 8])
             ->where(function ($q) {
                 $q->where('Incidents.Deleted', 0)->orWhereNull('Incidents.Deleted');
@@ -76,20 +88,21 @@ class ActiveEventsWidget extends BaseWidget
         return $table
             ->query(fn () => $query)
             ->columns([
-                // Columna 1: Numero de evento formateado SE911:AAAA:MM:DD:NNNN
-                // SequenceNumber de la DB es compound (ej: "00:25:277737")
-                // Se extrae la parte numerica final (277737) y se muestra con formato SE911
-                Tables\Columns\TextColumn::make('SequenceNumber')
+                // Columna 1: Numero del ultimo response (SE911:AAAA:MM:DD:NNNN) del incidente
+                // Ya viene con el formato SE911, no se reformatea. La busqueda se hace
+                // sobre Responses.SequenceNumber (la columna origen es un alias SQL,
+                // no se puede buscar directamente).
+                Tables\Columns\TextColumn::make('NumeroResponse')
                     ->label('Evento')
-                    ->searchable()
                     ->weight('bold')
-                    ->formatStateUsing(function ($state, $record): string {
-                        $date = Carbon::parse($record->CreationTime);
-                        // Extrae la ultima parte numerica del SequenceNumber compound
-                        $parts = explode(':', $state);
-                        $numero = end($parts);
-
-                        return "SE911:{$date->format('Y:m:d')}:{$numero}";
+                    ->placeholder('Sin response')
+                    ->searchable(query: function (Builder $query, string $search): Builder {
+                        return $query->whereExists(function (Builder $subconsulta) use ($search): void {
+                            $subconsulta->selectRaw('1')
+                                ->from('Responses as respBusqueda')
+                                ->whereColumn('respBusqueda.Incident', 'Incidents.OID')
+                                ->where('respBusqueda.SequenceNumber', 'like', '%'.$search.'%');
+                        });
                     }),
 
                 // Columna 2: Tipo de evento (ResponseType)
@@ -144,23 +157,42 @@ class ActiveEventsWidget extends BaseWidget
                     ->weight('bold'),
             ])
             ->actions([
-                // Accion de fila: abre el Reporte de Eventos con el numero de evento pre-cargado.
-                // El numero formateado SE911:AAAA:MM:DD:NNNN se pasa como query param ?busqueda=
-                // y EventReport::mount() lo detecta y ejecuta la busqueda automaticamente.
-                Action::make('ver_reporte')
-                    ->label('Ver en Reporte')
-                    ->icon('heroicon-m-document-magnifying-glass')
+                // Accion de fila: muestra un modal con el detalle completo del evento
+                // (mismas secciones y notas que el modal del Reporte de Eventos).
+                // Al montar la accion se cargan los datos desde CadReportService (cache 10 min).
+                Action::make('ver_evento')
+                    ->label('Ver Evento')
+                    ->icon('heroicon-m-document-text')
                     ->color('primary')
-                    ->url(function ($record): string {
-                        $date = Carbon::parse($record->CreationTime);
-                        $parts = explode(':', $record->SequenceNumber);
-                        $numero = end($parts);
-                        $eventoFormateado = "SE911:{$date->format('Y:m:d')}:{$numero}";
+                    // Sin response vigente no hay numero con el que consultar el detalle
+                    ->disabled(fn ($record): bool => blank($record->NumeroResponse))
+                    ->modal()
+                    ->modalWidth('7xl')
+                    ->modalHeading(fn (): string => 'Detalle del Evento: '.(
+                        $this->detalleEvento?->{'Numero de Evento'}
+                        ?? $this->detalleEvento?->{'Numero Incidente Formateado'}
+                        ?? ''
+                    ))
+                    // El modal solo muestra informacion: sin boton de submit, solo cerrar
+                    ->modalSubmitAction(false)
+                    ->modalCancelActionLabel('Cerrar')
+                    ->mountUsing(function (Action $action, $record = null): void {
+                        // Numero del response vigente (la columna Evento del widget)
+                        $numeroEvento = $record?->NumeroResponse ?? '';
 
-                        // Genera la URL de la pagina EventReport con el numero de evento como parametro
-                        return route('filament.monitoreo.pages.event-report', ['busqueda' => $eventoFormateado]);
+                        if (blank($numeroEvento)) {
+                            return;
+                        }
+
+                        // Detalle + notas desde el servicio compartido con el reporte
+                        $servicio = new CadReportService;
+                        $this->detalleEvento = $servicio->getDetalleEvento($numeroEvento);
+                        $this->notasEvento = $servicio->getNotasEvento($numeroEvento);
                     })
-                    ->openUrlInNewTab(false),
+                    ->modalContent(fn () => view('components.evento-detalle', [
+                        'detalleEvento' => $this->detalleEvento,
+                        'notasEvento' => $this->notasEvento,
+                    ])),
             ])
             // Sin paginacion: muestra todos los activos del dia
             ->paginated([5, 10, 50, 100]);

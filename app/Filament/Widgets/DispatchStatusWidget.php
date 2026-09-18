@@ -3,6 +3,7 @@
 namespace App\Filament\Widgets;
 
 use App\Services\CadReportService;
+use BezhanSalleh\FilamentShield\Traits\HasWidgetShield;
 use Filament\Widgets\StatsOverviewWidget;
 use Filament\Widgets\StatsOverviewWidget\Stat;
 
@@ -15,7 +16,7 @@ use Filament\Widgets\StatsOverviewWidget\Stat;
  */
 class DispatchStatusWidget extends StatsOverviewWidget
 {
-    use \BezhanSalleh\FilamentShield\Traits\HasWidgetShield;
+    use HasWidgetShield;
 
     // Titulo del widget
     protected function getHeading(): string
