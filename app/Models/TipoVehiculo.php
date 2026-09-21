@@ -2,6 +2,8 @@
 
 namespace App\Models;
 
+use Database\Factories\TipoVehiculoFactory;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
@@ -10,6 +12,9 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  */
 class TipoVehiculo extends Model
 {
+    /** @use HasFactory<TipoVehiculoFactory> */
+    use HasFactory;
+
     protected $fillable = ['nombre'];
 
     /** Tipos que clasifican a los vehiculos (uno a muchos). */

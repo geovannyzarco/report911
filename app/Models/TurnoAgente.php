@@ -2,6 +2,8 @@
 
 namespace App\Models;
 
+use Database\Factories\TurnoAgenteFactory;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
@@ -11,6 +13,9 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  */
 class TurnoAgente extends Model
 {
+    /** @use HasFactory<TurnoAgenteFactory> */
+    use HasFactory;
+
     protected $fillable = [
         'turno_id',
         'agente_id',

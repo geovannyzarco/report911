@@ -2,6 +2,8 @@
 
 namespace App\Models;
 
+use Database\Factories\VehiculoFactory;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
@@ -13,6 +15,9 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  */
 class Vehiculo extends Model
 {
+    /** @use HasFactory<VehiculoFactory> */
+    use HasFactory;
+
     protected $fillable = [
         'numero_equipo',
         'tipo_vehiculo_id',

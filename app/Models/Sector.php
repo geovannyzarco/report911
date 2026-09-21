@@ -2,6 +2,8 @@
 
 namespace App\Models;
 
+use Database\Factories\SectorFactory;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
@@ -10,6 +12,12 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  */
 class Sector extends Model
 {
+    /** @use HasFactory<SectorFactory> */
+    use HasFactory;
+
+    /** La tabla se llama 'sectores' (plurar en espanol), no 'sectors'. */
+    protected $table = 'sectores';
+
     protected $fillable = ['nombre'];
 
     /** Sectores que agrupan a los agentes destacados en ellos (uno a muchos). */

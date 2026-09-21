@@ -2,6 +2,8 @@
 
 namespace App\Models;
 
+use Database\Factories\EstadoRecursoFactory;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
@@ -10,6 +12,9 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  */
 class EstadoRecurso extends Model
 {
+    /** @use HasFactory<EstadoRecursoFactory> */
+    use HasFactory;
+
     protected $fillable = ['nombre'];
 
     /** Estados usados en el pivot de agentes por turno (uno a muchos). */
