@@ -7,6 +7,7 @@ use Filament\Models\Contracts\FilamentUser;
 use Filament\Models\Contracts\HasName;
 use Filament\Panel;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Str;
@@ -78,5 +79,13 @@ class User extends Authenticatable implements FilamentUser, HasName
             ->explode(' ')
             ->map(fn (string $name) => Str::of($name)->substr(0, 1))
             ->implode('');
+    }
+
+    /**
+     * Datos del despachador vinculado a este usuario (1-a-1, solo si el usuario es despacho).
+     */
+    public function despacho(): HasOne
+    {
+        return $this->hasOne(Despacho::class);
     }
 }
