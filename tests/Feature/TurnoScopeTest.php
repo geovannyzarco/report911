@@ -23,14 +23,14 @@ it('un despachador solo ve sus propios turnos', function () {
         'user_id' => $userA->id,
         'oni' => 'ep10001',
         'categoria_id' => $categoria->id,
-        'sector_id' => $sector->id,
     ]);
+    $despachoA->sectores()->attach($sector->id);
     $userA->assignRole(DespachoService::ROL_DESPACHO);
 
     $despachoB = Despacho::factory()->create([
         'categoria_id' => $categoria->id,
-        'sector_id' => $sector->id,
     ]);
+    $despachoB->sectores()->attach($sector->id);
 
     Turno::factory()->create(['despacho_id' => $despachoA->id]);
     Turno::factory()->create(['despacho_id' => $despachoB->id]);
@@ -49,12 +49,12 @@ it('un rol que no es despacho ve todos los turnos', function () {
 
     $despachoA = Despacho::factory()->create([
         'categoria_id' => $categoria->id,
-        'sector_id' => $sector->id,
     ]);
+    $despachoA->sectores()->attach($sector->id);
     $despachoB = Despacho::factory()->create([
         'categoria_id' => $categoria->id,
-        'sector_id' => $sector->id,
     ]);
+    $despachoB->sectores()->attach($sector->id);
 
     Turno::factory()->create(['despacho_id' => $despachoA->id]);
     Turno::factory()->create(['despacho_id' => $despachoB->id]);

@@ -6,6 +6,7 @@ use Database\Factories\DespachoFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /**
@@ -22,7 +23,6 @@ class Despacho extends Model
         'oni',
         'nombre',
         'categoria_id',
-        'sector_id',
         'activo',
     ];
 
@@ -45,10 +45,10 @@ class Despacho extends Model
         return $this->belongsTo(Categoria::class);
     }
 
-    /** Sector (delegacion/puesto) al que pertenece el despachador. */
-    public function sector(): BelongsTo
+    /** Sectores (delegaciones/puestos) asignados al despachador (muchos-a-muchos). */
+    public function sectores(): BelongsToMany
     {
-        return $this->belongsTo(Sector::class);
+        return $this->belongsToMany(Sector::class, 'despacho_sector');
     }
 
     /** Turnos registrados por el despachador (uno a muchos). */

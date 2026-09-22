@@ -14,13 +14,14 @@ uses(RefreshDatabase::class);
 
 it('da de alta un despachador con su usuario, correo institucional y rol', function () {
     $categoria = Categoria::factory()->create();
-    $sector = Sector::factory()->create();
+    $sectorA = Sector::factory()->create();
+    $sectorB = Sector::factory()->create();
 
     $despacho = app(DespachoService::class)->darDeAlta([
         'oni' => 'ep12345',
         'nombre' => 'Despachador de Prueba',
         'categoria_id' => $categoria->id,
-        'sector_id' => $sector->id,
+        'sectores' => [$sectorA->id, $sectorB->id],
         'password' => 'secret123',
     ]);
 
@@ -29,7 +30,8 @@ it('da de alta un despachador con su usuario, correo institucional y rol', funct
         ->and($despacho->user->email)->toBe('ep12345@pnc.gob.sv')
         ->and($despacho->user->hasRole(DespachoService::ROL_DESPACHO))->toBeTrue()
         ->and(Role::where('name', DespachoService::ROL_DESPACHO)->exists())->toBeTrue()
-        ->and(Hash::check('secret123', $despacho->user->password))->toBeTrue();
+        ->and(Hash::check('secret123', $despacho->user->password))->toBeTrue()
+        ->and($despacho->sectores->pluck('id')->sort()->values()->all())->toBe([$sectorA->id, $sectorB->id]);
 });
 
 it('no deja registros sueltos si la transaccion falla', function () {
@@ -42,10 +44,11 @@ it('no deja registros sueltos si la transaccion falla', function () {
         'oni' => 'ep99999',
         'nombre' => 'Duplicado',
         'categoria_id' => $categoria->id,
-        'sector_id' => $sector->id,
+        'sectores' => [$sector->id],
         'password' => 'secret123',
     ]))->toThrow(QueryException::class);
 
     expect(DB::table('despachos')->count())->toBe(0)
+        ->and(DB::table('despacho_sector')->count())->toBe(0)
         ->and(User::count())->toBe(1);
 });

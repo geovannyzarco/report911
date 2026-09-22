@@ -59,12 +59,21 @@ class DespachoResource extends Resource
                             ->preload()
                             ->searchable()
                             ->required(),
-                        Forms\Components\Select::make('sector_id')
-                            ->label('Sector')
-                            ->relationship('sector', 'nombre')
+                        Forms\Components\Select::make('sectores')
+                            ->label('Sectores')
+                            ->relationship('sectores', 'nombre')
+                            ->multiple()
                             ->preload()
                             ->searchable()
-                            ->required(),
+                            ->required()
+                            ->minItems(1)
+                            ->createOptionForm([
+                                Forms\Components\TextInput::make('nombre')
+                                    ->label('Nombre del sector')
+                                    ->required()
+                                    ->unique(ignoreRecord: true)
+                                    ->maxLength(255),
+                            ]),
                         Forms\Components\Toggle::make('activo')
                             ->label('Activo')
                             ->default(true),
@@ -92,8 +101,9 @@ class DespachoResource extends Resource
                     ->label('Categoría')
                     ->badge()
                     ->sortable(),
-                Tables\Columns\TextColumn::make('sector.nombre')
-                    ->label('Sector')
+                Tables\Columns\TextColumn::make('sectores.nombre')
+                    ->label('Sectores')
+                    ->badge()
                     ->searchable()
                     ->sortable(),
                 Tables\Columns\TextColumn::make('created_at')

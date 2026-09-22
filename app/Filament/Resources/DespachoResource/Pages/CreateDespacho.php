@@ -16,6 +16,11 @@ class CreateDespacho extends CreateRecord
 
     protected function handleRecordCreation(array $data): Model
     {
+        // Los MultiSelect de relación (many-to-many) no se incluyen en $data
+        // (Filament los excluye y los sincroniza solo); aquí se recuperan del
+        // estado en bruto del formulario para asignarlos vía el servicio.
+        $data['sectores'] = $this->form->getRawState()['sectores'] ?? [];
+
         return app(DespachoService::class)->darDeAlta($data);
     }
 }

@@ -34,8 +34,8 @@ beforeEach(function () {
 it('crea un turno con sus agentes y vehiculos desde la pagina', function () {
     $despacho = Despacho::factory()->create([
         'categoria_id' => $this->categoria->id,
-        'sector_id' => $this->sector->id,
     ]);
+    $despacho->sectores()->attach($this->sector->id);
     $agente = Agente::factory()->create([
         'categoria_id' => $this->categoria->id,
         'sector_id' => $this->sector->id,

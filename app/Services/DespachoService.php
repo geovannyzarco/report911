@@ -20,9 +20,9 @@ class DespachoService
 
     /**
      * Alta de un despachador: crea el usuario con rol despacho y el registro de despacho
-     * en una sola transaccion. El correo institucional se deriva del ONI.
+     * (asignando sus sectores) en una sola transaccion. El correo se deriva del ONI.
      *
-     * @param  array{oni: string, nombre: string, categoria_id: int, sector_id: int, password: string}  $data
+     * @param  array{oni: string, nombre: string, categoria_id: int, sectores: int[], password: string}  $data
      */
     public function darDeAlta(array $data): Despacho
     {
@@ -38,14 +38,18 @@ class DespachoService
             $rol = Role::firstOrCreate(['name' => self::ROL_DESPACHO]);
             $user->assignRole($rol);
 
-            return Despacho::create([
+            $despacho = Despacho::create([
                 'user_id' => $user->id,
                 'oni' => $data['oni'],
                 'nombre' => $data['nombre'],
                 'categoria_id' => $data['categoria_id'],
-                'sector_id' => $data['sector_id'],
                 'activo' => true,
             ]);
+
+            // Asigna los sectores seleccionados al despachador.
+            $despacho->sectores()->attach($data['sectores']);
+
+            return $despacho;
         });
     }
 }
